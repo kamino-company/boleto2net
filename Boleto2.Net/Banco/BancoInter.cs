@@ -337,6 +337,11 @@ namespace Boleto2Net
                         reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0202, 006, 0, Empty, '0');
                         break;
                     case TipoDesconto.ValorDataFixa:
+                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0185, 013, 0, boleto.ValorDesconto, '0');
+                        reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0198, 004, 0, Empty, '0');
+                        DateTime dataDescontoValorFixa = boleto.DataDesconto < boleto.DataVencimento ? boleto.DataDesconto : boleto.DataVencimento;
+                        reg.Adicionar(TTiposDadoEDI.ediDataDDMMAA___________, 0202, 006, 0, dataDescontoValorFixa, '0');
+                        break;
                     case TipoDesconto.ValorDiaCorrido:
                     case TipoDesconto.ValorDiaUtil:
                         reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0185, 013, 0, boleto.ValorDesconto, '0');
