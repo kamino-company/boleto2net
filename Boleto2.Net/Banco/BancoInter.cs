@@ -315,7 +315,7 @@ namespace Boleto2Net
                 else if (boleto.ValorMulta > 0)
                 {
                     reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0160, 001, 0, "1", '0');
-                    reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0161, 013, 0, boleto.ValorJurosDia, '0');
+                    reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0161, 013, 2, boleto.ValorJurosDia, '0');
                     reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0174, 004, 0, Empty, '0');
                     DateTime dataJuros = boleto.DataMulta >= boleto.DataVencimento ? boleto.DataJuros : boleto.DataVencimento.AddDays(1);
                     reg.Adicionar(TTiposDadoEDI.ediDataDDMMAA___________, 0178, 006, 0, dataJuros, '0');
@@ -337,14 +337,14 @@ namespace Boleto2Net
                         reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0202, 006, 0, Empty, '0');
                         break;
                     case TipoDesconto.ValorDataFixa:
-                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0185, 013, 0, boleto.ValorDesconto, '0');
+                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0185, 013, 2, boleto.ValorDesconto, '0');
                         reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0198, 004, 0, Empty, '0');
                         DateTime dataDescontoValorFixa = boleto.DataDesconto < boleto.DataVencimento ? boleto.DataDesconto : boleto.DataVencimento;
                         reg.Adicionar(TTiposDadoEDI.ediDataDDMMAA___________, 0202, 006, 0, dataDescontoValorFixa, '0');
                         break;
                     case TipoDesconto.ValorDiaCorrido:
                     case TipoDesconto.ValorDiaUtil:
-                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0185, 013, 0, boleto.ValorDesconto, '0');
+                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0185, 013, 2, boleto.ValorDesconto, '0');
                         reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0198, 004, 0, Empty, '0');
                         DateTime dataDescontoValor = boleto.DataDesconto < boleto.DataVencimento ? boleto.DataDesconto : boleto.DataVencimento.AddDays(-1);
                         reg.Adicionar(TTiposDadoEDI.ediDataDDMMAA___________, 0202, 006, 0, dataDescontoValor, '0');
