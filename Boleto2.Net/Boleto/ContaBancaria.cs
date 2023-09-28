@@ -18,7 +18,7 @@ namespace Boleto2Net
         public TipoFormaCadastramento TipoFormaCadastramento { get; set; } = TipoFormaCadastramento.ComRegistro;
         public TipoImpressaoBoleto TipoImpressaoBoleto { get; set; } = TipoImpressaoBoleto.Empresa;
         public TipoDocumento TipoDocumento { get; set; } = TipoDocumento.Tradicional;
-        public string LocalPagamento { get; set; } = "PAG¡VEL EM QUALQUER BANCO.";
+        public string LocalPagamento { get; set; } = "PAG√ÅVEL EM QUALQUER BANCO.";
         public string MensagemFixaTopoBoleto { get; set; } = "";
         public string MensagemFixaSacado { get; set; } = "";
         public int CodigoBancoCorrespondente { get; set; }
@@ -36,6 +36,11 @@ namespace Boleto2Net
 
             var conta = Conta;
             Conta = conta.Length <= digitosConta ? conta.PadLeft(digitosConta, '0') : throw Boleto2NetException.ContaInvalida(conta, digitosConta);
+        }
+
+        public string ContaFormatada()
+        {
+            return $"{Conta}{DigitoConta}";
         }
     }
 }

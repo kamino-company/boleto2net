@@ -264,7 +264,7 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0002, 019, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0021, 003, 0, "112", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0024, 004, 0, "0001", '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0028, 010, 0, boleto.Banco.Cedente.ContaBancaria.Conta.PadLeft(10, '0'), '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0028, 010, 0, boleto.Banco.Cedente.ContaBancaria.ContaFormatada().PadLeft(10, '0'), '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0038, 025, 0, Empty, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0063, 003, 0, Empty, ' ');
                 //Valor da multa informado em percentual
