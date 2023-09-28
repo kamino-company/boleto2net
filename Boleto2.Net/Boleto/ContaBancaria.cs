@@ -37,5 +37,10 @@ namespace Boleto2Net
             var conta = Conta;
             Conta = conta.Length <= digitosConta ? conta.PadLeft(digitosConta, '0') : throw Boleto2NetException.ContaInvalida(conta, digitosConta);
         }
+
+        public string ContaFormatada()
+        {
+            return $"{Conta}{DigitoConta}".PadLeft(10, '0');
+        }
     }
 }
