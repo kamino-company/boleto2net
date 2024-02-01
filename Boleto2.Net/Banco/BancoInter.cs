@@ -190,8 +190,8 @@ namespace Boleto2Net
                 if (int.Parse(boleto.CodigoOcorrencia) == 3)
                     boleto.DescricaoOcorrencia += $" | {registro.Substring(240, 140).Trim()}";
 
-                //Especie
-                boleto.EspecieDocumento = TipoEspecieDocumento.OU;
+                //Especie (Obs: Para o Banco Inter o tipo 01 é Duplicata Mercantil)
+                boleto.EspecieDocumento = TipoEspecieDocumento.CH;
 
                 //Valores do Título
                 if(!IsNullOrWhiteSpace(registro.Substring(124, 13)))
