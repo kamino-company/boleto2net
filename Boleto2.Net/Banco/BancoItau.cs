@@ -477,6 +477,8 @@ namespace Boleto2Net
                     return "Baixa Rejeitada";
                 case "28":
                     return "Débito de tarifas/custas";
+                case "29":
+                    return "Tarifa de manutenção de títulos vencidos";
                 case "30":
                     return "Alteração de Outros Dados Rejeitados";
                 case "32":
