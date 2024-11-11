@@ -59,7 +59,7 @@ namespace Boleto2Net
             return carteira.FormataCodigoBarraCampoLivre(boleto);
         }
 
-        public string GerarHeaderRemessa(TipoArquivo tipoArquivo, int numeroArquivoRemessa, ref int numeroRegistroGeral)//AQUI
+        public string GerarHeaderRemessa(TipoArquivo tipoArquivo, int numeroArquivoRemessa, ref int numeroRegistroGeral)
         {
             try
             {
