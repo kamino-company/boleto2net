@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Web.UI;
 using Boleto2Net.Exceptions;
@@ -292,7 +292,7 @@ namespace Boleto2Net
                         break;
 
                     default:
-                        reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 108, 001, 0, "?", ' ');
+                        reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 108, 001, 0, "I", ' ');
                         break;
                 }
 
