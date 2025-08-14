@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Web.UI;
 using Boleto2Net.Exceptions;
 using Boleto2Net.Extensions;
+using System.Text.RegularExpressions;
 
 [assembly: WebResource("BoletoNet.Imagens.001.jpg", "image/jpg")]
 
@@ -174,7 +175,6 @@ namespace Boleto2Net
 
             arquivoRetorno.Banco.Cedente.Nome = registro.Substring(72, 30).Trim();
 
-
             arquivoRetorno.Banco.Cedente.ContaBancaria = new ContaBancaria();
 
             arquivoRetorno.Banco.Cedente.ContaBancaria.Agencia = registro.Substring(52, 5);
@@ -249,7 +249,6 @@ namespace Boleto2Net
                 boleto.Sacado.CPFCNPJ = str.Substring(str.Length - 14, 14);
                 boleto.Sacado.Nome = registro.Substring(148, 40);
 
-
                 // Registro Retorno
                 boleto.RegistroArquivoRetorno = boleto.RegistroArquivoRetorno + registro + Environment.NewLine;
             }
@@ -272,7 +271,6 @@ namespace Boleto2Net
                 boleto.ValorPagoCredito = Convert.ToDecimal(registro.Substring(92, 15)) / 100;
                 boleto.ValorOutrasDespesas = Convert.ToDecimal(registro.Substring(107, 15)) / 100;
                 boleto.ValorOutrosCreditos = Convert.ToDecimal(registro.Substring(122, 15)) / 100;
-
 
                 //Data Ocorrência no Banco
                 boleto.DataProcessamento = Utils.ToDateTime(Utils.ToInt32(registro.Substring(137, 8)).ToString("##-##-####"));
@@ -458,6 +456,7 @@ namespace Boleto2Net
             try
             {
                 var reg = new TRegistroEDI();
+
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 003, 0, "001", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, "0000", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0008, 001, 0, "0", '0');
@@ -469,15 +468,22 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0046, 002, 0, Cedente.ContaBancaria.CarteiraPadrao, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0048, 003, 0, Cedente.ContaBancaria.VariacaoCarteiraPadrao, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0051, 002, 0, string.Empty, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0053, 005, 0, Cedente.ContaBancaria.Agencia, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0058, 001, 0, Cedente.ContaBancaria.DigitoAgencia, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0059, 012, 0, Cedente.ContaBancaria.Conta, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0071, 001, 0, Cedente.ContaBancaria.DigitoConta, ' ');
+                var _ag = OnlyDigits(Cedente.ContaBancaria.Agencia);
+                var _dvAg = OnlyDigits(Cedente.ContaBancaria.DigitoAgencia);
+                if (string.IsNullOrWhiteSpace(_dvAg)) _dvAg = "0";
+                var _cc = OnlyDigits(Cedente.ContaBancaria.Conta);
+                var _dvCc = OnlyDigits(Cedente.ContaBancaria.DigitoConta);
+                if (string.IsNullOrWhiteSpace(_dvCc)) _dvCc = "0";
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0053, 005, 0, _ag, '0');
+                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0058, 001, 0, _dvAg, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0059, 012, 0, _cc, '0');
+                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0071, 001, 0, _dvCc, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0072, 001, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0073, 030, 0, Cedente.Nome, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0103, 030, 0, "BANCO DO BRASIL S.A.", ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0133, 010, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0143, 001, 0, "1", '0');
+
                 reg.Adicionar(TTiposDadoEDI.ediDataDDMMAAAA_________, 0144, 008, 0, DateTime.Now, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediHoraHHMMSS___________, 0152, 006, 0, DateTime.Now, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0158, 006, 0, numeroArquivoRemessa, '0');
@@ -500,6 +506,7 @@ namespace Boleto2Net
             try
             {
                 var reg = new TRegistroEDI();
+
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 003, 0, "001", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, "0001", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0008, 001, 0, "1", '0');
@@ -515,15 +522,22 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0047, 002, 0, Cedente.ContaBancaria.CarteiraPadrao, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0049, 003, 0, Cedente.ContaBancaria.VariacaoCarteiraPadrao, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0052, 002, 0, string.Empty, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0054, 005, 0, Cedente.ContaBancaria.Agencia, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0059, 001, 0, Cedente.ContaBancaria.DigitoAgencia, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0060, 012, 0, Cedente.ContaBancaria.Conta, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0072, 001, 0, Cedente.ContaBancaria.DigitoConta, ' ');
+                var _agL = OnlyDigits(Cedente.ContaBancaria.Agencia);
+                var _dvAgL = OnlyDigits(Cedente.ContaBancaria.DigitoAgencia);
+                if (string.IsNullOrWhiteSpace(_dvAgL)) _dvAgL = "0";
+                var _ccL = OnlyDigits(Cedente.ContaBancaria.Conta);
+                var _dvCcL = OnlyDigits(Cedente.ContaBancaria.DigitoConta);
+                if (string.IsNullOrWhiteSpace(_dvCcL)) _dvCcL = "0";
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0054, 005, 0, _agL, '0');
+                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0059, 001, 0, _dvAgL, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0060, 012, 0, _ccL, '0');
+                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0072, 001, 0, _dvCcL, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0073, 001, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0074, 030, 0, Cedente.Nome, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0104, 040, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0144, 040, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0184, 008, 0, numeroArquivoRemessa, '0');
+
                 reg.Adicionar(TTiposDadoEDI.ediDataDDMMAAAA_________, 0192, 008, 0, DateTime.Now, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0200, 008, 0, "0", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0208, 033, 0, string.Empty, ' ');
@@ -549,15 +563,22 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0014, 001, 0, "P", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0015, 001, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0016, 002, 0, boleto.CodigoOcorrencia, '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0018, 005, 0, boleto.Banco.Cedente.ContaBancaria.Agencia, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0023, 001, 0, boleto.Banco.Cedente.ContaBancaria.DigitoAgencia, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0024, 012, 0, boleto.Banco.Cedente.ContaBancaria.Conta, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0036, 001, 0, boleto.Banco.Cedente.ContaBancaria.DigitoConta, ' ');
+                var _agP = OnlyDigits(boleto.Banco.Cedente.ContaBancaria.Agencia);
+                var _dvAgP = OnlyDigits(boleto.Banco.Cedente.ContaBancaria.DigitoAgencia);
+                if (string.IsNullOrWhiteSpace(_dvAgP)) _dvAgP = "0";
+                var _ccP = OnlyDigits(boleto.Banco.Cedente.ContaBancaria.Conta);
+                var _dvCcP = OnlyDigits(boleto.Banco.Cedente.ContaBancaria.DigitoConta);
+                if (string.IsNullOrWhiteSpace(_dvCcP)) _dvCcP = "0";
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0018, 005, 0, _agP, '0');
+                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0023, 001, 0, _dvAgP, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0024, 012, 0, _ccP, '0');
+                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0036, 001, 0, _dvCcP, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0037, 001, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0038, 020, 0, boleto.NossoNumero, ' ');
                 var tipoCarteira = (int)boleto.TipoCarteira;
                 if ((boleto.Carteira == "17") & (tipoCarteira == 1))
                     tipoCarteira = 7; // Informar 7 – para carteira 17 modalidade Simples.
+
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0058, 001, 0, tipoCarteira, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0059, 001, 0, (int)boleto.Banco.Cedente.ContaBancaria.TipoFormaCadastramento, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0060, 001, 0, "2", '0');
@@ -1070,6 +1091,13 @@ namespace Boleto2Net
         public string FormatarNomeArquivoRemessa(int numeroSequencial)
         {
             return "";
+        }
+
+        private static string OnlyDigits(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+            return Regex.Replace(value, "[^0-9]", "");
         }
 
         #endregion
