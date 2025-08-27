@@ -475,9 +475,9 @@ namespace Boleto2Net
                 var _dvCc = OnlyDigits(Cedente.ContaBancaria.DigitoConta);
                 if (string.IsNullOrWhiteSpace(_dvCc)) _dvCc = "0";
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0053, 005, 0, _ag, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0058, 001, 0, _dvAg, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0058, 001, 0, _dvAg, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0059, 012, 0, _cc, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0071, 001, 0, _dvCc, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0071, 001, 0, _dvCc, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0072, 001, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0073, 030, 0, Cedente.Nome, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0103, 030, 0, "BANCO DO BRASIL S.A.", ' ');
@@ -529,9 +529,9 @@ namespace Boleto2Net
                 var _dvCcL = OnlyDigits(Cedente.ContaBancaria.DigitoConta);
                 if (string.IsNullOrWhiteSpace(_dvCcL)) _dvCcL = "0";
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0054, 005, 0, _agL, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0059, 001, 0, _dvAgL, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0059, 001, 0, _dvAgL, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0060, 012, 0, _ccL, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0072, 001, 0, _dvCcL, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0072, 001, 0, _dvCcL, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0073, 001, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0074, 030, 0, Cedente.Nome, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0104, 040, 0, string.Empty, ' ');
@@ -570,9 +570,9 @@ namespace Boleto2Net
                 var _dvCcP = OnlyDigits(boleto.Banco.Cedente.ContaBancaria.DigitoConta);
                 if (string.IsNullOrWhiteSpace(_dvCcP)) _dvCcP = "0";
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0018, 005, 0, _agP, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0023, 001, 0, _dvAgP, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0023, 001, 0, _dvAgP, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0024, 012, 0, _ccP, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0036, 001, 0, _dvCcP, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0036, 001, 0, _dvCcP, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0037, 001, 0, string.Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0038, 020, 0, boleto.NossoNumero, ' ');
                 var tipoCarteira = (int)boleto.TipoCarteira;
