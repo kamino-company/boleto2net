@@ -1096,8 +1096,9 @@ namespace Boleto2Net
         private static string OnlyDigits(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return string.Empty;
-            return Regex.Replace(value, "[^0-9]", "");
+                return "0";
+            var result = Regex.Replace(value, "[^0-9]", "");
+            return string.IsNullOrWhiteSpace(result) ? "0" : result;
         }
 
         #endregion
