@@ -394,29 +394,13 @@ namespace Boleto2Net
         {
             try
             {
-                if (boleto.Avalista.Nome == "")
-                    return "";
-
-                numeroRegistroGeral++;
-                var reg = new TRegistroEDI();
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 001, 0, "5", '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0002, 120, 0, Empty, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0122, 002, 0, boleto.Avalista.TipoCPFCNPJ("00"), '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0124, 014, 0, boleto.Avalista.CPFCNPJ, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0138, 040, 0, boleto.Avalista.Endereco.FormataLogradouro(40), ' ');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0178, 012, 0, boleto.Avalista.Endereco.Bairro, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0190, 008, 0, boleto.Avalista.Endereco.CEP.Replace("-", ""), '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0198, 015, 0, boleto.Avalista.Endereco.Cidade, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0213, 002, 0, boleto.Avalista.Endereco.UF, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0215, 180, 0, Empty, ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0395, 006, 0, numeroRegistroGeral, '0');
-
-                reg.CodificarLinha();
-                return reg.LinhaRegistro;
+                // O registro tipo 5 é opcional e usado para email do sacado
+                // Como a classe Sacado não possui Email, não geramos este registro
+                return "";
             }
             catch (Exception ex)
             {
-                throw new Exception("Erro ao gerar DETALHE do arquivo CNAB400 - Registro 2.", ex);
+                throw new Exception("Erro ao gerar DETALHE do arquivo CNAB400 - Registro 5.", ex);
             }
         }
 
