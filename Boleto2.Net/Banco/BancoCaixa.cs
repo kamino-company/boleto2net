@@ -30,7 +30,7 @@ namespace Boleto2Net
             if (!CarteiraFactory<BancoCaixa>.CarteiraEstaImplementada(contaBancaria.CarteiraComVariacaoPadrao))
                 throw Boleto2NetException.CarteiraNaoImplementada(contaBancaria.CarteiraComVariacaoPadrao);
 
-            contaBancaria.FormatarDados("PREFERENCIALMENTE NAS CASAS LOTERICAS ATE O VALOR LIMITE", "", "SAC CAIXA: 0800 726 0101 (informações, reclamações, sugestões e elogios)<br>Para pessoas com deficiência auditiva ou de fala: 0800 726 2492<br>Ouvidoria: 0800 725 7474<br>caixa.gov.br<br>", 6);
+            contaBancaria.FormatarDados("PREFERENCIALMENTE NAS CASAS LOTERICAS ATE O VALOR LIMITE", "", "SAC CAIXA: 0800 726 0101 (informações, reclamações, sugestões e elogios)<br>Para pessoas com deficiência auditiva ou de fala: 0800 726 2492<br>Ouvidoria: 0800 725 7474<br>caixa.gov.br<br>", 11);
 
             var codigoCedente = Cedente.Codigo;
             Cedente.Codigo = codigoCedente.Length == 6 || codigoCedente.Length == 7 ? Cedente.Codigo : throw new ArgumentException($"O código do cedente ({codigoCedente}) deve conter 6 ou 7 dígitos."); //#329
