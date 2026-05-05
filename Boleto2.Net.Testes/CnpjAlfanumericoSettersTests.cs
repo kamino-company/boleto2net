@@ -46,7 +46,7 @@ namespace Boleto2.Net.Testes
         public void Cedente_FlagOn_RemoveSeparadores()
         {
             Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
-            var cedente = new Boleto2Net.Cedente { CPFCNPJ = "AB.12.CD3/4EFG-83" };
+            var cedente = new Boleto2Net.Cedente { CPFCNPJ = "AB.12C.D34/EFGH-83" };
             Assert.AreEqual("AB12CD34EFGH83", cedente.CPFCNPJ);
         }
 
@@ -163,7 +163,7 @@ namespace Boleto2.Net.Testes
         public void Sacado_FlagOn_RemoveSeparadores()
         {
             Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
-            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "AB.12.CD3/4EFG-83" };
+            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "AB.12C.D34/EFGH-83" };
             Assert.AreEqual("AB12CD34EFGH83", sacado.CPFCNPJ);
         }
 
