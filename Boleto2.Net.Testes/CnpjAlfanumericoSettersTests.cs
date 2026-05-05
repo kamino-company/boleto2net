@@ -232,6 +232,14 @@ namespace Boleto2.Net.Testes
         }
 
         [Test]
+        public void Sacado_FlagOff_AceitaCpfNumerico()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = false;
+            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "12345678901" };
+            Assert.AreEqual("12345678901", sacado.CPFCNPJ);
+        }
+
+        [Test]
         public void Sacado_FlagOff_AceitaCnpjComMascara()
         {
             Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = false;
