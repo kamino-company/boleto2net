@@ -144,11 +144,35 @@ namespace Boleto2.Net.Testes
         }
 
         [Test]
-        public void Sacado_FlagOff_RejeitaAlfa()
+        public void Sacado_FlagOn_NormalizaLowercase()
         {
-            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = false;
-            Assert.Throws<System.ArgumentException>(() =>
-                new Boleto2Net.Sacado { CPFCNPJ = "AB12CD34EFGH83" });
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "ab12cd34efgh83" };
+            Assert.AreEqual("AB12CD34EFGH83", sacado.CPFCNPJ);
+        }
+
+        [Test]
+        public void Sacado_FlagOn_TrimWhitespace()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "  AB12CD34EFGH83  " };
+            Assert.AreEqual("AB12CD34EFGH83", sacado.CPFCNPJ);
+        }
+
+        [Test]
+        public void Sacado_FlagOn_RemoveSeparadores()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "AB.12.CD3/4EFG-83" };
+            Assert.AreEqual("AB12CD34EFGH83", sacado.CPFCNPJ);
+        }
+
+        [Test]
+        public void Sacado_FlagOn_AceitaCnpjNumerico()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "12345678000195" };
+            Assert.AreEqual("12345678000195", sacado.CPFCNPJ);
         }
 
         [Test]
@@ -157,6 +181,72 @@ namespace Boleto2.Net.Testes
             Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
             var sacado = new Boleto2Net.Sacado { CPFCNPJ = "12345678901" };
             Assert.AreEqual("12345678901", sacado.CPFCNPJ);
+        }
+
+        [Test]
+        public void Sacado_FlagOn_RejeitaCpfComLetras()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            Assert.Throws<System.ArgumentException>(() =>
+                new Boleto2Net.Sacado { CPFCNPJ = "ABC45678901" });
+        }
+
+        [Test]
+        public void Sacado_FlagOn_RejeitaCnpjComCaractereEspecial()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            Assert.Throws<System.ArgumentException>(() =>
+                new Boleto2Net.Sacado { CPFCNPJ = "AB12CD34EFG@83" });
+        }
+
+        [Test]
+        public void Sacado_FlagOn_RejeitaDvComLetras()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            Assert.Throws<System.ArgumentException>(() =>
+                new Boleto2Net.Sacado { CPFCNPJ = "AB12CD34EFGHAB" });
+        }
+
+        [Test]
+        public void Sacado_FlagOn_RejeitaLengthInvalido()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            Assert.Throws<System.ArgumentException>(() =>
+                new Boleto2Net.Sacado { CPFCNPJ = "AB12" });
+        }
+
+        [Test]
+        public void Sacado_FlagOff_RejeitaAlfa()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = false;
+            Assert.Throws<System.ArgumentException>(() =>
+                new Boleto2Net.Sacado { CPFCNPJ = "AB12CD34EFGH83" });
+        }
+
+        [Test]
+        public void Sacado_FlagOff_AceitaCnpjNumerico()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = false;
+            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "12345678000195" };
+            Assert.AreEqual("12345678000195", sacado.CPFCNPJ);
+        }
+
+        [Test]
+        public void Sacado_FlagOff_AceitaCnpjComMascara()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = false;
+            var sacado = new Boleto2Net.Sacado { CPFCNPJ = "12.345.678/0001-95" };
+            Assert.AreEqual("12345678000195", sacado.CPFCNPJ);
+        }
+
+        // === Avalista ===
+
+        [Test]
+        public void Avalista_FlagOn_AceitaAlfaTransitivamente()
+        {
+            Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
+            var boleto = new Boleto2Net.Boleto { Avalista = new Boleto2Net.Sacado { CPFCNPJ = "AB12CD34EFGH83" } };
+            Assert.AreEqual("AB12CD34EFGH83", boleto.Avalista.CPFCNPJ);
         }
     }
 }
