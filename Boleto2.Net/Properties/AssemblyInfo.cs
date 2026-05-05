@@ -20,6 +20,8 @@ using System.Web.UI;
 // COM, set the ComVisible attribute to true on that type.
 [assembly: ComVisible(false)]
 
+[assembly: InternalsVisibleTo("Boleto2.Net.Testes")]
+
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("21b36699-85b2-44ed-9f43-e64802521a6b")]
 

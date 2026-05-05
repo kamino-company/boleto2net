@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Collections.Generic;
+using Boleto2Net.Util;
 
 namespace Boleto2Net
 {
@@ -20,10 +21,7 @@ namespace Boleto2Net
             }
             set
             {
-                string numero = value.Trim().Replace(".", "").Replace("-", "").Replace("/", "");
-                if (numero == null || (numero.Length != 11 && numero.Length != 14))
-                    throw new ArgumentException("CPF/CNPJ inválido: Utilize 11 dígitos para CPF ou 14 para CPNJ.");
-                _cpfcnpj = numero;
+                _cpfcnpj = CpfCnpjValidator.NormalizeAndValidate(CpfCnpjValidator.SanitizeSeparators(value));
             }
         }
         public string TipoCPFCNPJ(string formatoRetorno)
@@ -39,7 +37,7 @@ namespace Boleto2Net
                 case "00":
                     return CPFCNPJ.Length <= 11 ? "01" : "02";
             }
-            throw new Exception("TipoCPFCNPJ: Formato do retorno inválido.");
+            throw new Exception("TipoCPFCNPJ: Formato do retorno invï¿½lido.");
         }
     }
 }
