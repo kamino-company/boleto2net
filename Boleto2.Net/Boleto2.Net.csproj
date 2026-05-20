@@ -129,6 +129,8 @@
     <Compile Include="Boleto\Boletos.cs" />
     <Compile Include="Util\Extensions.cs" />
     <Compile Include="Util\Cnab.cs" />
+    <Compile Include="Util\CnabSettings.cs" />
+    <Compile Include="Util\CpfCnpjValidator.cs" />
     <Compile Include="Util\TCampoRegistroEDI.cs" />
     <Compile Include="Util\TRegistroEDI.cs" />
     <Compile Include="Util\TTipoRegistroEDI.cs" />
