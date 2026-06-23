@@ -190,15 +190,15 @@ namespace Boleto2Net
                 boleto.EspecieDocumento = AjustaEspecieCnab400(registro.Substring(173, 2));
 
                 //Valores do Título
-                boleto.ValorTitulo = Convert.ToDecimal(registro.Substring(152, 13)) / 100;
-                boleto.ValorTarifas = Convert.ToDecimal(registro.Substring(175, 13)) / 100;
-                boleto.ValorOutrasDespesas = Convert.ToDecimal(registro.Substring(188, 13)) / 100;
-                boleto.ValorIOF = Convert.ToDecimal(registro.Substring(214, 13)) / 100;
-                boleto.ValorAbatimento = Convert.ToDecimal(registro.Substring(227, 13)) / 100;
-                boleto.ValorDesconto = Convert.ToDecimal(registro.Substring(240, 13)) / 100;
-                boleto.ValorPagoCredito = Convert.ToDecimal(registro.Substring(253, 13)) / 100;
-                boleto.ValorJurosDia = Convert.ToDecimal(registro.Substring(266, 13)) / 100;
-                boleto.ValorOutrosCreditos = Convert.ToDecimal(registro.Substring(279, 13)) / 100;
+                boleto.ValorTitulo = SafeToDecimal(registro.Substring(152, 13)) / 100;
+                boleto.ValorTarifas = SafeToDecimal(registro.Substring(175, 13)) / 100;
+                boleto.ValorOutrasDespesas = SafeToDecimal(registro.Substring(188, 13)) / 100;
+                boleto.ValorIOF = SafeToDecimal(registro.Substring(214, 13)) / 100;
+                boleto.ValorAbatimento = SafeToDecimal(registro.Substring(227, 13)) / 100;
+                boleto.ValorDesconto = SafeToDecimal(registro.Substring(240, 13)) / 100;
+                boleto.ValorPagoCredito = SafeToDecimal(registro.Substring(253, 13)) / 100;
+                boleto.ValorJurosDia = SafeToDecimal(registro.Substring(266, 13)) / 100;
+                boleto.ValorOutrosCreditos = SafeToDecimal(registro.Substring(279, 13)) / 100;
 
                 //Data Ocorrência no Banco
                 boleto.DataProcessamento = Utils.ToDateTime(Utils.ToInt32(registro.Substring(110, 6)).ToString("##-##-##"));
@@ -216,6 +216,13 @@ namespace Boleto2Net
             {
                 throw new Exception("Erro ao ler detalhe do arquivo de RETORNO / CNAB 400.", ex);
             }
+        }
+
+        // Optional CNAB 400 numeric value fields may arrive filled with blanks instead of zeros (e.g. Itau ValorOutrasDespesas).
+        // Convert.ToDecimal throws FormatException on blank input, so treat null/blank as zero.
+        private static decimal SafeToDecimal(string value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? 0m : Convert.ToDecimal(value);
         }
 
         public void LerDetalheRetornoCNAB400Segmento7(ref Boleto boleto, string registro)
