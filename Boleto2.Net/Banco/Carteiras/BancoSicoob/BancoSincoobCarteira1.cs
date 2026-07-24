@@ -69,12 +69,13 @@ namespace Boleto2Net
         /// <summary>
         /// Completa o valor com zeros à esquerda, recusando o que não couber no campo. Truncar ou zerar em
         /// silêncio geraria uma linha com dígitos verificadores válidos apontando para outro título.
+        /// Exige dígito ASCII: char.IsDigit aceita algarismo Unicode, que depois quebra o cálculo do DV.
         /// </summary>
         private static string ExigirDigitos(string valor, int tamanho, string campo)
         {
             valor = valor ?? Empty;
 
-            if (valor.Length == 0 || valor.Length > tamanho || !valor.All(char.IsDigit))
+            if (valor.Length == 0 || valor.Length > tamanho || !valor.All(c => c >= '0' && c <= '9'))
                 throw new Exception($"{campo} ({valor}) deve conter de 1 a {tamanho} dígitos numéricos.");
 
             return valor.PadLeft(tamanho, '0');

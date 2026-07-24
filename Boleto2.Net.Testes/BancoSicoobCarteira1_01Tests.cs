@@ -110,6 +110,7 @@ namespace Boleto2Net.Testes
         [TestCase("", "Número do Contrato")]
         [TestCase("1234567890", "Número do Contrato")]
         [TestCase("12345678A", "Número do Contrato")]
+        [TestCase("١٢٣٤٥٦٧٨٩", "Número do Contrato")]
         public void Sicoob_NovoContrato_ContratoInvalido_DeveLancar(string numeroContrato, string campoEsperado)
         {
             //Ambiente
