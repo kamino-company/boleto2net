@@ -7,6 +7,9 @@ namespace Boleto2Net
     [CarteiraCodigo("1/01")]
     internal class BancoSincoobCarteira1: ICarteira<BancoSicoob>
     {
+        private const string NovoContratoIdNegocio = "9";
+        private const string NovoContratoModalidade = "01";
+
         internal static Lazy<ICarteira<BancoSicoob>> Instance { get; } = new Lazy<ICarteira<BancoSicoob>>(() => new BancoSincoobCarteira1());
 
         private BancoSincoobCarteira1()
@@ -19,7 +22,19 @@ namespace Boleto2Net
             var cedente = boleto.Banco.Cedente;
             if (cedente.ContaBancaria.TipoImpressaoBoleto == TipoImpressaoBoleto.Empresa & boleto.NossoNumero == Empty)
                 throw new Exception("Nosso Número não informado.");
-            
+
+            if (boleto.SicoobNovoContrato)
+            {
+                // Nosso número de 9 dígitos, sem DV embutido.
+                if (boleto.NossoNumero.Length > 9)
+                    throw new Exception("Nosso Número (" + boleto.NossoNumero + ") deve conter até 9 dígitos.");
+
+                boleto.NossoNumero = boleto.NossoNumero.PadLeft(9, '0');
+                boleto.NossoNumeroDV = Empty;
+                boleto.NossoNumeroFormatado = boleto.NossoNumero;
+                return;
+            }
+
             // Nosso número não pode ter mais de 7 dígitos
             if (boleto.NossoNumero.Length > 7)
                 throw new Exception("Nosso Número (" + boleto.NossoNumero + ") deve conter 7 dígitos.");
@@ -36,6 +51,16 @@ namespace Boleto2Net
         {
             var cedente = boleto.Banco.Cedente;
             var contaBancaria = cedente.ContaBancaria;
+
+            if (boleto.SicoobNovoContrato)
+            {
+                // Id.Negócio(1) + Cooperativa(4) + Contrato(9) + NossoNúmero(9) + Modalidade(2) = 25 posições.
+                var cooperativa = (contaBancaria.Agencia ?? Empty).PadLeft(4, '0').Right(4);
+                var contrato = (boleto.SicoobNumeroContrato ?? Empty).PadLeft(9, '0').Right(9);
+                var nossoNumero = boleto.NossoNumero.PadLeft(9, '0').Right(9);
+                return $"{NovoContratoIdNegocio}{cooperativa}{contrato}{nossoNumero}{NovoContratoModalidade}";
+            }
+
             return $"{boleto.Carteira}{contaBancaria.Agencia}{boleto.VariacaoCarteira}{cedente.Codigo}{cedente.CodigoDV}{boleto.NossoNumero}{boleto.NossoNumeroDV}001";
         }
     }

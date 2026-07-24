@@ -71,5 +71,37 @@ namespace Boleto2Net.Testes
             Assert.That(boleto.CodigoBarra.CodigoDeBarras, Is.EqualTo(codigoDeBarras), "Código de Barra inválido");
             Assert.That(boleto.CodigoBarra.LinhaDigitavel, Is.EqualTo(linhaDigitavel), "Linha digitável inválida");
         }
+
+        // Campo livre "Novo Contrato" (Cobrança Simples): Id.Negócio(9) + Cooperativa(4) + Contrato(9) +
+        // NossoNúmero(9) + Modalidade(01). Oráculo: aba "05.Pré-homologação de Boletos" da planilha SICOOB.
+        // Cooperativa = Agencia do fixture (4277). O campo livre (posições 20-44 do código de barras) é
+        // determinístico; o fator de vencimento não é (depende da data), então o vencimento é relativo a
+        // hoje (dentro do range CENEGESC) e a asserção recai sobre o campo livre e o nosso número.
+        [TestCase("123456789", "000000136", "9427712345678900000013601", 1)]
+        [TestCase("000012345", "000000042", "9427700001234500000004201", 6)]
+        public void Sicoob_NovoContrato_CampoLivreOK(string numeroContrato, string nossoNumero, string campoLivreEsperado, int mesesAteVencimento)
+        {
+            //Ambiente
+            var boleto = new Boleto(_banco)
+            {
+                DataVencimento = DateTime.Now.Date.AddMonths(mesesAteVencimento),
+                ValorTitulo = 300,
+                NossoNumero = nossoNumero,
+                NumeroDocumento = "BO123456D",
+                EspecieDocumento = TipoEspecieDocumento.DM,
+                Sacado = Utils.GerarSacado(),
+                SicoobNovoContrato = true,
+                SicoobNumeroContrato = numeroContrato
+            };
+
+            //Ação
+            boleto.ValidarDados();
+
+            //Assertivas
+            var campoLivre = boleto.CodigoBarra.CodigoDeBarras.Substring(19, 25); // posições 20-44
+            Assert.That(campoLivre, Is.EqualTo(campoLivreEsperado), "Campo livre do Novo Contrato inválido");
+            Assert.That(boleto.NossoNumeroFormatado, Is.EqualTo(nossoNumero), "Nosso número deve ter 9 dígitos, sem DV");
+            Assert.That(boleto.NossoNumeroDV, Is.EqualTo(string.Empty), "Novo Contrato não embute DV do nosso número");
+        }
     }
 }
