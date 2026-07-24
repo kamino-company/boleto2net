@@ -253,7 +253,10 @@ namespace Boleto2.Net.Testes
         public void Avalista_FlagOn_AceitaAlfaTransitivamente()
         {
             Boleto2Net.CnabSettings.SuportarCnpjAlfanumerico = true;
-            var boleto = new Boleto2Net.Boleto { Avalista = new Boleto2Net.Sacado { CPFCNPJ = "AB12CD34EFGH83" } };
+            var boleto = new Boleto2Net.Boleto(Boleto2Net.Banco.Instancia(Boleto2Net.Bancos.Itau), true)
+            {
+                Avalista = new Boleto2Net.Sacado { CPFCNPJ = "AB12CD34EFGH83" }
+            };
             Assert.AreEqual("AB12CD34EFGH83", boleto.Avalista.CPFCNPJ);
         }
     }

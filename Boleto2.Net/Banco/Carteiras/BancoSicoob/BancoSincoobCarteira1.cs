@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Boleto2Net.Extensions;
 using static System.String;
 
@@ -9,6 +10,9 @@ namespace Boleto2Net
     {
         private const string NovoContratoIdNegocio = "9";
         private const string NovoContratoModalidade = "01";
+        private const int TamanhoCooperativa = 4;
+        private const int TamanhoContrato = 9;
+        private const int TamanhoNossoNumero = 9;
 
         internal static Lazy<ICarteira<BancoSicoob>> Instance { get; } = new Lazy<ICarteira<BancoSicoob>>(() => new BancoSincoobCarteira1());
 
@@ -25,11 +29,8 @@ namespace Boleto2Net
 
             if (boleto.SicoobNovoContrato)
             {
-                // Nosso número de 9 dígitos, sem DV embutido.
-                if (boleto.NossoNumero.Length > 9)
-                    throw new Exception("Nosso Número (" + boleto.NossoNumero + ") deve conter até 9 dígitos.");
-
-                boleto.NossoNumero = boleto.NossoNumero.PadLeft(9, '0');
+                // No Novo Contrato o nosso número ocupa 9 posições do campo livre, sem DV embutido.
+                boleto.NossoNumero = ExigirDigitos(boleto.NossoNumero, TamanhoNossoNumero, "Nosso Número");
                 boleto.NossoNumeroDV = Empty;
                 boleto.NossoNumeroFormatado = boleto.NossoNumero;
                 return;
@@ -55,13 +56,28 @@ namespace Boleto2Net
             if (boleto.SicoobNovoContrato)
             {
                 // Id.Negócio(1) + Cooperativa(4) + Contrato(9) + NossoNúmero(9) + Modalidade(2) = 25 posições.
-                var cooperativa = (contaBancaria.Agencia ?? Empty).PadLeft(4, '0').Right(4);
-                var contrato = (boleto.SicoobNumeroContrato ?? Empty).PadLeft(9, '0').Right(9);
-                var nossoNumero = boleto.NossoNumero.PadLeft(9, '0').Right(9);
+                var cooperativa = ExigirDigitos(contaBancaria.Agencia, TamanhoCooperativa, "Cooperativa");
+                var contrato = ExigirDigitos(boleto.SicoobNumeroContrato, TamanhoContrato, "Número do Contrato");
+                var nossoNumero = ExigirDigitos(boleto.NossoNumero, TamanhoNossoNumero, "Nosso Número");
+
                 return $"{NovoContratoIdNegocio}{cooperativa}{contrato}{nossoNumero}{NovoContratoModalidade}";
             }
 
             return $"{boleto.Carteira}{contaBancaria.Agencia}{boleto.VariacaoCarteira}{cedente.Codigo}{cedente.CodigoDV}{boleto.NossoNumero}{boleto.NossoNumeroDV}001";
+        }
+
+        /// <summary>
+        /// Completa o valor com zeros à esquerda, recusando o que não couber no campo. Truncar ou zerar em
+        /// silêncio geraria uma linha com dígitos verificadores válidos apontando para outro título.
+        /// </summary>
+        private static string ExigirDigitos(string valor, int tamanho, string campo)
+        {
+            valor = valor ?? Empty;
+
+            if (valor.Length == 0 || valor.Length > tamanho || !valor.All(char.IsDigit))
+                throw new Exception($"{campo} ({valor}) deve conter de 1 a {tamanho} dígitos numéricos.");
+
+            return valor.PadLeft(tamanho, '0');
         }
     }
 }

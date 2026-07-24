@@ -48,10 +48,9 @@ namespace Boleto2Net
         public string CarteiraComVariacao => string.IsNullOrEmpty(Carteira) || string.IsNullOrEmpty(VariacaoCarteira) ? $"{Carteira}{VariacaoCarteira}" : $"{Carteira}/{VariacaoCarteira}";
         public string CarteiraImpressaoBoleto { get; set; } = string.Empty;
 
-        // Sicoob: use the "Novo Contrato" campo livre layout instead of the legacy one.
+        // Sicoob: campo livre no modelo "Novo Contrato", que usa o contrato de cobrança
+        // no lugar do código do cedente.
         public bool SicoobNovoContrato { get; set; } = false;
-
-        // Contract code for the Sicoob "Novo Contrato" campo livre.
         public string SicoobNumeroContrato { get; set; } = string.Empty;
 
         public DateTime DataProcessamento { get; set; } = DateTime.Now;
