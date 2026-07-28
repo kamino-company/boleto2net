@@ -71,5 +71,85 @@ namespace Boleto2Net.Testes
             Assert.That(boleto.CodigoBarra.CodigoDeBarras, Is.EqualTo(codigoDeBarras), "Código de Barra inválido");
             Assert.That(boleto.CodigoBarra.LinhaDigitavel, Is.EqualTo(linhaDigitavel), "Linha digitável inválida");
         }
+
+        // Campo livre do Novo Contrato: Id.Negócio(1)=9 + Cooperativa(4) + Contrato(9) + NossoNúmero(9) +
+        // Modalidade(2)=01, com a Cooperativa vindo da agência do fixture (4277).
+        // Esperados gerados pelo validador de referência, que reproduz as fórmulas da planilha oficial e foi
+        // conferido contra uma linha real do banco - ou seja, o oráculo não vem desta implementação.
+        // Vencimento fixo porque o fator depende da data; datas mais de 3000 dias no passado saem do range
+        // CENEGESC e FatorVencimento passa a lançar.
+        [TestCase("123456789", "000000136", "75694175100000300009427712345678900000013601", "75699.42779 12345.678903 00000.136010 4 17510000030000")]
+        [TestCase("000012345", "000000042", "75694175100000300009427700001234500000004201", "75699.42779 00001.234509 00000.042010 4 17510000030000")]
+        public void Sicoob_NovoContrato_BoletoOK(string numeroContrato, string nossoNumero, string codigoDeBarras, string linhaDigitavel)
+        {
+            //Ambiente
+            var boleto = new Boleto(_banco)
+            {
+                DataVencimento = new DateTime(2027, 3, 15),
+                ValorTitulo = 300,
+                NossoNumero = nossoNumero,
+                NumeroDocumento = "BO123456D",
+                EspecieDocumento = TipoEspecieDocumento.DM,
+                Sacado = Utils.GerarSacado(),
+                SicoobNovoContrato = true,
+                SicoobNumeroContrato = numeroContrato
+            };
+
+            //Ação
+            boleto.ValidarDados();
+
+            //Assertivas
+            Assert.That(boleto.CodigoBarra.CodigoDeBarras, Is.EqualTo(codigoDeBarras), "Código de Barra inválido");
+            Assert.That(boleto.CodigoBarra.LinhaDigitavel, Is.EqualTo(linhaDigitavel), "Linha digitável inválida");
+            Assert.That(boleto.NossoNumeroFormatado, Is.EqualTo(nossoNumero), "Nosso número deve ter 9 dígitos, sem DV");
+            Assert.That(boleto.NossoNumeroDV, Is.EqualTo(string.Empty), "Novo Contrato não embute DV do nosso número");
+        }
+
+        // O contrato entra na linha sem conferência do banco: zerar ou truncar produziria uma linha válida
+        // nos DVs, porém apontando para outro título.
+        [TestCase("", "Número do Contrato")]
+        [TestCase("1234567890", "Número do Contrato")]
+        [TestCase("12345678A", "Número do Contrato")]
+        [TestCase("١٢٣٤٥٦٧٨٩", "Número do Contrato")]
+        public void Sicoob_NovoContrato_ContratoInvalido_DeveLancar(string numeroContrato, string campoEsperado)
+        {
+            //Ambiente
+            var boleto = new Boleto(_banco)
+            {
+                DataVencimento = new DateTime(2027, 3, 15),
+                ValorTitulo = 300,
+                NossoNumero = "000000136",
+                NumeroDocumento = "BO123456D",
+                EspecieDocumento = TipoEspecieDocumento.DM,
+                Sacado = Utils.GerarSacado(),
+                SicoobNovoContrato = true,
+                SicoobNumeroContrato = numeroContrato
+            };
+
+            //Ação + Assertivas
+            var ex = Assert.Throws<Exception>(() => boleto.ValidarDados());
+            Assert.That(ex.Message, Does.Contain(campoEsperado));
+        }
+
+        [Test]
+        public void Sicoob_NovoContrato_NossoNumeroAcimaDoLimite_DeveLancar()
+        {
+            //Ambiente
+            var boleto = new Boleto(_banco)
+            {
+                DataVencimento = new DateTime(2027, 3, 15),
+                ValorTitulo = 300,
+                NossoNumero = "1234567890",
+                NumeroDocumento = "BO123456D",
+                EspecieDocumento = TipoEspecieDocumento.DM,
+                Sacado = Utils.GerarSacado(),
+                SicoobNovoContrato = true,
+                SicoobNumeroContrato = "123456789"
+            };
+
+            //Ação + Assertivas
+            var ex = Assert.Throws<Exception>(() => boleto.ValidarDados());
+            Assert.That(ex.Message, Does.Contain("Nosso Número"));
+        }
     }
 }
