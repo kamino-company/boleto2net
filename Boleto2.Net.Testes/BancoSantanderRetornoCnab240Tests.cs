@@ -208,17 +208,33 @@ namespace Boleto2Net.Testes
             Assert.AreEqual("PAGADOR OFFSET", boleto.Sacado.Nome.Trim(), "Nome do pagador (144-183) must not be shifted.");
         }
 
+        // Characterization test: a CPF payer is NOT recognized as a natural person on the return path.
+        // The 11-digit CPF arrives right-aligned in the 15-position field, the parser always takes a
+        // fixed 14-character slice, and CpfCnpjValidator only accepts exactly 11 or 14 digits without
+        // trimming leading zeros. The value is therefore stored as 14 digits, and TipoCPFCNPJ - which
+        // classifies with "CPFCNPJ.Length <= 11 ? F : J" - reports "J" (legal entity) for an individual.
+        // Pinning current behavior; flip these assertions if the parser starts trimming the pad.
         [Test]
-        public void LerDetalheSegmentoT_ComCpfDePagadorEmCampoDe15Posicoes_LeOnzeDigitosComZerosAEsquerda()
+        public void LerDetalheSegmentoT_ComCpfDePagador_MantemQuatorzeDigitosEClassificaComoJuridico()
         {
-            // A CPF payer arrives right-aligned with leading zeros; the trailing 14 read still
-            // normalizes to the 11-digit CPF because CpfCnpjValidator strips nothing but separators.
-            // Sacado.CPFCNPJ requires exactly 11 or 14 digits, so a 14-char all-digit read is kept as-is.
             var registro = BuildSegmentoT(inscricaoPagador: "000012345678909").ToString();
 
             var boleto = ParseSegmentoT(registro);
 
-            Assert.AreEqual("00012345678909", boleto.Sacado.CPFCNPJ);
+            Assert.AreEqual("00012345678909", boleto.Sacado.CPFCNPJ, "Parser keeps the fixed 14-char slice; the leading zero is not trimmed.");
+            Assert.AreEqual("J", boleto.Sacado.TipoCPFCNPJ("A"), "Known limitation: a CPF payer is classified as legal entity because the stored value has 14 characters.");
+        }
+
+        // An 11-digit CPF only survives the setter when it reaches it already trimmed, which the
+        // return path never does. Asserting it here documents that the validator itself supports CPF -
+        // the loss of that support is in the fixed-width read above, not in CpfCnpjValidator.
+        [Test]
+        public void SacadoCpfCnpj_ComCpfDeOnzeDigitos_AceitaEClassificaComoFisico()
+        {
+            var sacado = new Sacado { CPFCNPJ = "12345678909" };
+
+            Assert.AreEqual("12345678909", sacado.CPFCNPJ);
+            Assert.AreEqual("F", sacado.TipoCPFCNPJ("A"));
         }
 
         [TestCase("3", TipoCarteira.CarteiraCobrancaCaucionada, TestName = "Carteira 3 => Caucionada")]
