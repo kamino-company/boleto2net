@@ -1,4 +1,4 @@
-namespace Boleto2Net
+﻿namespace Boleto2Net
 {
     public enum Bancos : ushort
     {
@@ -6,6 +6,7 @@ namespace Boleto2Net
         Santander = 033,
         Banrisul = 041,
         Caixa = 104,
+        BtgPactual = 208,
         Bradesco = 237,
         Itau = 341,
         Safra = 422,
