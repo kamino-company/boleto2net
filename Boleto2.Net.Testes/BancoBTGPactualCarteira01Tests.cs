@@ -113,11 +113,21 @@ namespace Boleto2Net.Testes
         }
 
         [Test]
-        public void BtgPactual_RenderizaBoletoMesmoSemLogoDoBanco()
+        public void BtgPactual_LogoDoBancoEstaEmbutidoNoAssembly()
         {
-            // O assembly não embute logo para o 208. O logo é decoração; a falta dele não pode impedir a
-            // renderização de um boleto cujo código de barras está correto - antes da guarda, o stream nulo
-            // derrubava a montagem com NullReferenceException.
+            // O nome é montado em tempo de execução a partir do código do banco, então um arquivo com nome
+            // ou pasta errada não quebra a compilação - só some do boleto. A asserção aponta direto para o
+            // recurso em vez de deixar o erro aparecer como logo faltando na renderização.
+            using (var stream = typeof(BoletoBancario).Assembly.GetManifestResourceStream("Boleto2Net.Imagens.208.jpg"))
+            {
+                Assert.That(stream, Is.Not.Null, "Recurso Boleto2Net.Imagens.208.jpg não está embutido");
+                Assert.That(stream.Length, Is.GreaterThan(0));
+            }
+        }
+
+        [Test]
+        public void BtgPactual_RenderizaBoletoComLogoDoBanco()
+        {
             var boleto = new Boleto(_banco)
             {
                 DataVencimento = new DateTime(2026, 8, 31),
@@ -135,6 +145,10 @@ namespace Boleto2Net.Testes
             Assert.DoesNotThrow(() => html = boletoBancario.MontaHtmlEmbedded());
             Assert.That(html, Is.Not.Null.And.Not.Empty);
             Assert.That(html, Does.Contain("20898155500000022001234010001932304601234560").Or.Contain("20891.23406"));
+
+            // O logo entra no HTML como data URI. Sem essa asserção, um recurso ausente passaria
+            // despercebido: a guarda em BoletoBancario deixa a renderização seguir com a imagem vazia.
+            Assert.That(html, Does.Contain("data:image/gif;base64,").And.Not.Contain("src=\"\""));
         }
 
         [Test]
