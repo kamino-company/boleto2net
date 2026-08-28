@@ -1,6 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Web.UI;
 using Boleto2Net.Exceptions;
+
+// Nome que BoletoBancario monta em tempo de execução: "Boleto2Net.Imagens." + código do banco com 3
+// dígitos + ".jpg". Os arquivos mais antigos declaram "BoletoNet.Imagens.<código>.jpg", que não
+// corresponde ao recurso embutido e por isso não resolve - o Sicredi já foi corrigido, e este segue ele.
+[assembly: WebResource("Boleto2Net.Imagens.208.jpg", "image/jpg")]
 
 namespace Boleto2Net
 {
