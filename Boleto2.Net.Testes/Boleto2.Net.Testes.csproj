@@ -113,6 +113,7 @@
     <Compile Include="BancoSicrediCarteira1Tests.cs" />
     <Compile Include="BancoSicoobCarteira1_01Tests.cs" />
     <Compile Include="BancoCaixaCarteiraSig14Tests.cs" />
+    <Compile Include="BancoBTGPactualCarteira01Tests.cs" />
     <Compile Include="BancoBradescoCarteira09.cs" />
     <Compile Include="CnpjAlfanumericoSettersTests.cs" />
     <Compile Include="CnpjAlfanumericoFormattingTests.cs" />

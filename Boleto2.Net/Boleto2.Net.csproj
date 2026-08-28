@@ -73,6 +73,9 @@
     <Compile Include="Banco\Carteiras\BancoBanrisul\BancoBanrisulCarteira1.cs" />
     <Compile Include="Banco\Carteiras\BancoBrasil\BancoBrasilCarteira11.cs" />
     <Compile Include="Banco\Carteiras\BancoBrasil\BancoBrasilCarteira17.cs" />
+    <Compile Include="Banco\Carteiras\BancoBTGPactual\BancoBTGPactualCarteira.cs" />
+    <Compile Include="Banco\Carteiras\BancoBTGPactual\BancoBTGPactualCarteira01.cs" />
+    <Compile Include="Banco\Carteiras\BancoBTGPactual\BancoBTGPactualCarteira03.cs" />
     <Compile Include="Banco\Carteiras\BancoBradesco\BancoBradescoCarteira09.cs" />
     <Compile Include="Banco\Carteiras\BancoCaixa\BancoCaixaCarteiraSIG14.cs" />
     <Compile Include="Banco\Carteiras\BancoInter\BancoInterCarteira112.cs" />
@@ -109,6 +112,7 @@
     <Compile Include="Boleto2NetProxy.cs" />
     <Compile Include="Util\BarCodeBase.cs" />
     <Compile Include="BoletoImpressao\BoletoBancario.cs" />
+    <Compile Include="Banco\BancoBTGPactual.cs" />
     <Compile Include="Banco\BancoBradesco.cs" />
     <Compile Include="Util\BarCode2of5i.cs" />
     <Compile Include="Boleto\Cedente.cs" />
