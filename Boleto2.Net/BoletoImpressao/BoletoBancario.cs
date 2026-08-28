@@ -639,6 +639,16 @@ namespace Boleto2Net
         /// <param name="lrImagemLogo">O Logo do Banco</param>
         /// <param name="lrImagemBarra">A Barra Horizontal</param>
         /// <param name="lrImagemCodigoBarra">O Código de Barras</param>
+        /// <summary>
+        /// Devolve o logo do banco embutido no assembly, ou null quando o banco nao tem imagem.
+        /// Nem todo banco implementado tem logo; o logo e decoracao, e a falta dele nao pode impedir a
+        /// emissao de um boleto cujo codigo de barras esta correto. Antes desta guarda o stream nulo era
+        /// usado direto e derrubava a renderizacao com NullReferenceException.
+        /// </summary>
+        private Stream ObterStreamLogoBanco()
+            => Assembly.GetExecutingAssembly().GetManifestResourceStream(
+                "Boleto2Net.Imagens." + Utils.FormatCode(Boleto.Banco.Codigo.ToString(), 3) + ".jpg");
+
         void GeraGraficosParaEmailOffLine(out LinkedResource lrImagemLogo, out LinkedResource lrImagemBarra, out LinkedResource lrImagemCodigoBarra)
         {
             OnLoad(EventArgs.Empty);
@@ -646,7 +656,9 @@ namespace Boleto2Net
             
             var randomSufix = string.Concat(new Random().Next().ToString(), System.IO.Path.GetRandomFileName().Replace(".", string.Empty));
 
-            var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Boleto2Net.Imagens." + Utils.FormatCode(Boleto.Banco.Codigo.ToString(), 3) + ".jpg");
+            // Sem logo, segue com stream vazio: o ContentId continua valido para o HTML e o leitor de
+            // e-mail apenas nao mostra a imagem, em vez de a emissao falhar.
+            var stream = ObterStreamLogoBanco() ?? (Stream)new MemoryStream();
             lrImagemLogo = new LinkedResource(stream, MediaTypeNames.Image.Jpeg)
             {
                 ContentId = "logo" + randomSufix
@@ -714,10 +726,13 @@ namespace Boleto2Net
 
             if (!File.Exists(fnLogo))
             {
-                var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Boleto2Net.Imagens." + Utils.FormatCode(Boleto.Banco.Codigo.ToString(), 3) + ".jpg");
-                using (Stream file = File.Create(fnLogo))
+                var stream = ObterStreamLogoBanco();
+                if (stream != null)
                 {
-                    CopiarStream(stream, file);
+                    using (Stream file = File.Create(fnLogo))
+                    {
+                        CopiarStream(stream, file);
+                    }
                 }
             }
 
@@ -814,10 +829,13 @@ namespace Boleto2Net
             //Salvo a imagem apenas 1 vez com o código do banco
             if (!File.Exists(fnLogo))
             {
-                var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Boleto2Net.Imagens." + Utils.FormatCode(Boleto.Banco.Codigo.ToString(), 3) + ".jpg");
-                using (Stream file = File.Create(fnLogo))
+                var stream = ObterStreamLogoBanco();
+                if (stream != null)
                 {
-                    CopiarStream(stream, file);
+                    using (Stream file = File.Create(fnLogo))
+                    {
+                        CopiarStream(stream, file);
+                    }
                 }
             }
 
@@ -872,9 +890,13 @@ namespace Boleto2Net
 
             var assembly = Assembly.GetExecutingAssembly();
 
-            var streamLogo = assembly.GetManifestResourceStream("Boleto2Net.Imagens." + Boleto.Banco.Codigo.ToString("000") + ".jpg");
-            var base64Logo = Convert.ToBase64String(new BinaryReader(streamLogo).ReadBytes((int)streamLogo.Length));
-            var fnLogo = string.Format("data:image/gif;base64,{0}", base64Logo);
+            var streamLogo = ObterStreamLogoBanco();
+            var fnLogo = string.Empty;
+            if (streamLogo != null)
+            {
+                var base64Logo = Convert.ToBase64String(new BinaryReader(streamLogo).ReadBytes((int)streamLogo.Length));
+                fnLogo = string.Format("data:image/gif;base64,{0}", base64Logo);
+            }
 
             var streamBarra = assembly.GetManifestResourceStream("Boleto2Net.Imagens.barra.gif");
             var base64Barra = Convert.ToBase64String(new BinaryReader(streamBarra).ReadBytes((int)streamBarra.Length));

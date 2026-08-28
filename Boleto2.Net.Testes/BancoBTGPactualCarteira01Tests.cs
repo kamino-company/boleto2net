@@ -113,6 +113,31 @@ namespace Boleto2Net.Testes
         }
 
         [Test]
+        public void BtgPactual_RenderizaBoletoMesmoSemLogoDoBanco()
+        {
+            // O assembly não embute logo para o 208. O logo é decoração; a falta dele não pode impedir a
+            // renderização de um boleto cujo código de barras está correto - antes da guarda, o stream nulo
+            // derrubava a montagem com NullReferenceException.
+            var boleto = new Boleto(_banco)
+            {
+                DataVencimento = new DateTime(2026, 8, 31),
+                ValorTitulo = 22.00m,
+                NossoNumero = "19323046",
+                NumeroDocumento = "BTG001",
+                EspecieDocumento = TipoEspecieDocumento.DM,
+                Sacado = Utils.GerarSacado()
+            };
+            boleto.ValidarDados();
+
+            var boletoBancario = new BoletoBancario { Boleto = boleto, OcultarInstrucoes = false, MostrarComprovanteEntrega = false };
+
+            string html = null;
+            Assert.DoesNotThrow(() => html = boletoBancario.MontaHtmlEmbedded());
+            Assert.That(html, Is.Not.Null.And.Not.Empty);
+            Assert.That(html, Does.Contain("20898155500000022001234010001932304601234560").Or.Contain("20891.23406"));
+        }
+
+        [Test]
         public void BtgPactual_RemessaNaoImplementada()
         {
             // A cobrança do BTG é registrada pela VAN, não por arquivo. Falhar alto é melhor que devolver
