@@ -43,5 +43,13 @@ namespace Boleto2Net
         public ContaBancaria ContaBancaria { get; set; } = new ContaBancaria();
         public Endereco Endereco { get; set; } = new Endereco();
         public bool MostrarCNPJnoBoleto { get; set; } = true;
+
+        /// <summary>
+        /// Algumas cooperativas Sicoob rejeitam a remessa CNAB240 quando o campo Convênio
+        /// (posição 033-052 do Header de Arquivo e 034-053 do Header de Lote) vem preenchido
+        /// com o código do cedente, exigindo-o em branco. O padrão em outras cooperativas é
+        /// o oposto. Não há regra única conhecida; habilitar por conta conforme confirmado com o banco.
+        /// </summary>
+        public bool SicoobConvenioEmBranco { get; set; } = false;
     }
 }
