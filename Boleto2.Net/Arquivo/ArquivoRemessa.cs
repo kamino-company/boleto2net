@@ -101,7 +101,10 @@ namespace Boleto2Net
                 if (!String.IsNullOrWhiteSpace(strline))
                 {
                     strline = FormataLinhaArquivoCNAB(strline, tamanhoRegistro);
-                    arquivoRemessa.WriteLine(strline);
+                    if (this.Banco is BancoSicoob sicoob && sicoob.RemessaDispensaQuebraDeLinhaFinal(this.TipoArquivo))
+                        arquivoRemessa.Write(strline);
+                    else
+                        arquivoRemessa.WriteLine(strline);
                 }
 
                 arquivoRemessa.Close();

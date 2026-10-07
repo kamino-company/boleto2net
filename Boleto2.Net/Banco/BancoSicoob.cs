@@ -25,6 +25,14 @@ namespace Boleto2Net
         public List<string> IdsRetornoCnab400RegistroDetalhe { get; } = new List<string> { "1" };
         public bool RemoveAcentosArquivoRemessa { get; } = true;
 
+        // A cooperativa recusa a remessa CNAB240 quando há quebra de linha após o último registro; as demais aceitam.
+        private static readonly HashSet<int> CooperativasQueRecusamQuebraDeLinhaFinal = new HashSet<int> { 4036 };
+
+        internal bool RemessaDispensaQuebraDeLinhaFinal(TipoArquivo tipoArquivo) =>
+            tipoArquivo == TipoArquivo.CNAB240
+            && int.TryParse(Cedente?.ContaBancaria?.Agencia, out var cooperativa)
+            && CooperativasQueRecusamQuebraDeLinhaFinal.Contains(cooperativa);
+
         public void FormataCedente()
         {
             var contaBancaria = Cedente.ContaBancaria;
