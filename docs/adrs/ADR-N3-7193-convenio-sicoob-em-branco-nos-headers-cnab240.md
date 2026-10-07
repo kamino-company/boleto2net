@@ -82,8 +82,57 @@ Evidência já executada, com este diff aplicado localmente ao submódulo do Hub
 - Suíte `NimblyTests` inteira (categoria `UnitTest`) com este diff: 7574 testes, 7572 aprovados, 0 falhas, 2 ignorados por `[Ignore]` anterior e sem relação com esta mudança.
 - Build do `TaticoAPI.sln` em Release e Debug com este diff: sem erros.
 
+## Segunda causa: quebra de linha depois do último registro (cooperativa 4036)
+
+Depois da correção do Convênio, o arquivo da cooperativa 4036 passou a ser aprovado no validador público, mas o portal do banco continuou recusando o envio, de novo com a mensagem genérica "O Arquivo foi inteiramente rejeitado por não seguir a estrutura". O suporte técnico do Sicoob apontou a causa: a quebra de linha (CR LF) gravada depois do último registro, o trailer de arquivo.
+
+`ArquivoRemessa.GerarArquivoRemessa` grava todos os registros com `WriteLine`, inclusive o bloco do trailer. Por isso todo arquivo gerado pela biblioteca termina em `0D 0A`.
+
+### Evidências
+
+| Arquivo | Cooperativa | CR LF depois do último registro | Resultado no banco |
+|---|---|---|---|
+| Remessa gerada pela biblioteca (30/09/2026) | 4036 | sim | recusada; o suporte do banco apontou o CR LF final |
+| Remessa gerada pela biblioteca em 05/10/2026, sem os 2 bytes finais `0D 0A` | 4036 | não | **aceita** pelo portal (teste manual) |
+| Remessas das contas ativas | 3219 e 3246 | sim | aceitas há meses |
+| Arquivo aceito no N3-2384 (2024) | 4355 | sim | aceito |
+
+O teste manual isolou a causa:
+- o arquivo aceito é idêntico byte a byte ao gerado pela biblioteca, sem os 2 bytes finais;
+- o número sequencial era novo, e o Convênio já estava em branco;
+- nenhuma outra variável mudou entre a recusa e o aceite.
+
+O validador público do Sicoob aprova o arquivo com ou sem a quebra final, então ele não detecta essa regra.
+
+A biblioteca `laravel-boleto` também termina o CNAB240 com `\r\n` por padrão, mas na classe do Sicoob (`Cnab/Remessa/Cnab240/Banco/Bancoob.php`) define `$fimArquivo = ''`.
+
+### AD-4 — Sem quebra de linha final só para a cooperativa 4036, no CNAB240
+
+`BancoSicoob.RemessaDispensaQuebraDeLinhaFinal(TipoArquivo)` responde `true` só quando o arquivo é CNAB240 e a agência do cedente, que no Sicoob é o número da cooperativa, está no conjunto `CooperativasQueRecusamQuebraDeLinhaFinal` (hoje, `{ 4036 }`). Nesse caso, `ArquivoRemessa` grava o bloco do trailer com `Write` em vez de `WriteLine`. A quebra entre o trailer de lote e o de arquivo se mantém, e só a final sai.
+
+Decidimos **não** aplicar a regra a todo o Sicoob, nem a outros bancos. As cooperativas 3219, 3246 e 4355 aceitam o arquivo com a quebra final, e não há evidência de que aceitem sem ela: o validador público não distingue os dois casos. Já houve banco reclamando da falta dessa quebra. Mudar o formato de quem funciona hoje, sem prova, repetiria o erro dos PRs #7 e #17.
+
+A regra fica nesta biblioteca, e não no Hub-API, porque é ela que gera o arquivo. Se outra cooperativa passar a exigir o mesmo, a mudança é acrescentar o número ao conjunto, com a evidência registrada aqui.
+
+### AD-5 — Testes no Hub-API, junto com o bump do submódulo
+
+Pelo mesmo motivo do AD-3, o teste fica no `NimblyTests` do Hub-API. `BankSlipRemittanceSicoobTrailingLineBreakTests` gera a remessa por `MontarBoletoBancarioTradicional` + `ArquivoRemessa` e verifica os bytes reais:
+
+| Cenário | O que o teste exige |
+|---|---|
+| Sicoob, cooperativa 4036 | o arquivo termina no último caractere do trailer, sem `0D 0A`; os 6 registros têm 240 posições cada, sem linha vazia; o CR LF continua entre os registros, inclusive entre o trailer de lote e o de arquivo |
+| Sicoob, cooperativa 3219 | continua terminando em `0D 0A` |
+| Caixa | continua terminando em `0D 0A` |
+
+Evidência executada com este diff aplicado localmente ao submódulo do Hub-API, sem commit do ponteiro:
+- com o ponteiro atual (`33b9d3d`), os 4 casos da 4036 falham e os 2 de controle passam;
+- com o diff, 6 de 6;
+- suíte `NimblyTests` completa (`UnitTest`): 7645 testes, 7643 aprovados, 0 falhas, 2 ignorados por `[Ignore]` anterior;
+- build do `TaticoAPI.sln` em Release e Debug: sem erros.
+
 ## Consequências
 
 - As remessas Sicoob de todas as contas passam a sair com o campo Convênio em branco nos dois headers.
+- As remessas CNAB240 da cooperativa 4036 deixam de terminar com quebra de linha. Todas as outras contas e bancos continuam gerando o arquivo byte a byte igual a antes.
 - Não há mudança de schema, de cadastro ou de boleto.
-- Rollback: reverter este commit e o ponteiro do submódulo no Hub-API.
+- Rollback: reverter o commit correspondente e o ponteiro do submódulo no Hub-API.
