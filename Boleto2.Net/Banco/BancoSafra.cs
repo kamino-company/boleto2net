@@ -173,9 +173,10 @@ namespace Boleto2Net
                 arquivoRetorno.Banco.Cedente.Nome = registro.Substring(72, 30).Trim();
 
                 arquivoRetorno.Banco.Cedente.ContaBancaria = new ContaBancaria();
-                //053-057 Agência (no Safra, agência com o dígito) / 059-070 Conta / 071 DV da conta
-                arquivoRetorno.Banco.Cedente.ContaBancaria.Agencia = registro.Substring(52, 5);
-                arquivoRetorno.Banco.Cedente.ContaBancaria.DigitoAgencia = registro.Substring(57, 1).Trim();
+                //053-057 Agência (no Safra, 4 posições da agência + DV, como a remessa grava) / 058 em branco
+                //059-070 Conta / 071 DV da conta
+                arquivoRetorno.Banco.Cedente.ContaBancaria.Agencia = registro.Substring(52, 4);
+                arquivoRetorno.Banco.Cedente.ContaBancaria.DigitoAgencia = registro.Substring(56, 1);
                 arquivoRetorno.Banco.Cedente.ContaBancaria.Conta = registro.Substring(58, 12);
                 arquivoRetorno.Banco.Cedente.ContaBancaria.DigitoConta = registro.Substring(70, 1);
 

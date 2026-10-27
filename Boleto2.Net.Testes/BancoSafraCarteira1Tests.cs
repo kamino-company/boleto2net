@@ -443,6 +443,11 @@ namespace Boleto2Net.Testes
             Assert.That(retorno.NumeroSequencial, Is.EqualTo(123));
             Assert.That(retorno.DataGeracao, Is.EqualTo(new DateTime(2026, 10, 28)));
             Assert.That(retorno.Banco.Cedente.CPFCNPJ, Is.EqualTo("11222333000181"));
+            // 053-057 traz agência (4) + DV (1), como a remessa grava; 058 fica em branco.
+            Assert.That(retorno.Banco.Cedente.ContaBancaria.Agencia, Is.EqualTo("1234"));
+            Assert.That(retorno.Banco.Cedente.ContaBancaria.DigitoAgencia, Is.EqualTo("5"));
+            Assert.That(retorno.Banco.Cedente.ContaBancaria.Conta, Is.EqualTo("000000123456"));
+            Assert.That(retorno.Banco.Cedente.ContaBancaria.DigitoConta, Is.EqualTo("7"));
             Assert.That(retorno.Boletos.Count, Is.EqualTo(2));
 
             var liquidado = retorno.Boletos[0];
