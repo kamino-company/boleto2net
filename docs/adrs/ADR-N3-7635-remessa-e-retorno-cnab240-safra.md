@@ -24,7 +24,7 @@ O Hub-API já gera a remessa do Safra como CNAB240: `Boleto.CNAB.GeraRemessaPend
 
 Assim, a primeira remessa Safra gerada pela plataforma falharia no header, e nenhum retorno 240 do Safra poderia ser lido.
 
-O boleto em si já atende ao guia: o nosso número tem 9 caracteres (8 dígitos + DV) e o código de barras tem teste em `BancoSafraCarteira1Tests`.
+O código de barras do boleto já atendia ao guia e tem teste em `BancoSafraCarteira1Tests`. O nosso número impresso, porém, saía com hífen (`00001142-8`); a revisão de 2026-11-03 (AD-5) o alinha aos 9 caracteres da remessa.
 
 ## Causa raiz
 
@@ -47,7 +47,7 @@ O caminho CNAB400 não foi alterado. A remessa 400 gerada antes e depois da muda
 | Registro | Regra do guia aplicada |
 |---|---|
 | Header de arquivo | lote `0000`; convênio (033-052) em branco; agência com 5 dígitos em 053-057 = agência + DV do cadastro (a mesma composição do campo livre do código de barras), com o DV da agência (058) em branco; conta com 12 dígitos (059-070); DV da conta (071); `BANCO SAFRA S/A` (103-132); código `1` (143); hora `000000`; sequencial do arquivo (158-163); versão `087` |
-| Header de lote | lote `0001`, `R`, serviço `01`, versão `060`; agência e conta em 054-072 iguais às de 053-071 do header de arquivo; mensagens em branco; número da remessa (184-191) = sequencial do lote, como manda o guia; data do crédito `00000000` |
+| Header de lote | lote = número do arquivo remessa (AD-5), `R`, serviço `01`, versão `060`; agência e conta em 054-072 iguais às de 053-071 do header de arquivo; mensagens em branco; número da remessa (184-191) = sequencial do lote, como manda o guia; data do crédito `00000000` |
 | Segmento P | movimento = `CodigoOcorrencia` (`01` entrada, `02` baixa); nosso número com 9 posições (038-046) e 047-057 em branco; carteira `1` simples ou `2` vinculada; cadastro `1`, documento `2`, emissão e distribuição `2` (cliente); seu número com 10 caracteres (063-072); agência cobradora igual à mantenedora; aceite `N`; IOF e abatimento zerados (o Safra não aceita abatimento na entrada); moeda `09`; contrato zerado; `1` (não autoriza pagamento parcial) |
 | Segmento Q | pagador; sacador/avalista `0` e zeros quando ausente; CEP em 5 + 3; banco correspondente `000` |
 | Segmento R | só com multa; descontos 2 e 3 zerados; código de multa `2` (percentual), data e percentual |
@@ -84,8 +84,17 @@ A descrição da ocorrência vem de `Cnab.OcorrenciaCnab240`.
   - O guia condiciona as quantidades do trailer de lote ao movimento `01`. A biblioteca usa os totalizadores de `ArquivoRemessa`, que contam todos os boletos do arquivo, inclusive baixas. Num arquivo que só tem entradas, os dois critérios coincidem.
   - A homologação final depende do arquivo de teste que o cliente envia à mesa de implantação do Safra (etapas 3-4 do guia). Esta decisão não substitui essa validação.
   - A leitura do retorno fora das posições citadas no guia segue o padrão FEBRABAN e não foi conferida contra um retorno real do Safra.
-  - `BancoSafra` é singleton (`Lazy<IBanco>`). O CNAB240 não acrescenta estado de instância: a única propriedade mutável continua sendo a do CNAB400 (`NumeroArquivoRemessaCNAB400`).
+  - `BancoSafra` é singleton (`Lazy<IBanco>`). O CNAB240 não acrescenta estado de instância: reaproveita a propriedade que o CNAB400 já gravava no header, renomeada para `NumeroArquivoRemessa` (AD-5).
 - Rollback: reverter o commit e o ponteiro do submódulo no Hub-API.
+
+### AD-5 — Revisão de 2026-11-03: lote por arquivo e nosso número do boleto
+
+A reanálise contra o guia (p. 7-8, 20-21) achou duas divergências na primeira versão:
+
+- **Lote.** O guia pede o lote (004-007) a partir de `0001`, somando 1 a cada novo arquivo, e repetido em 184-191 do header de lote. A primeira versão gravava sempre `0001`. Agora o lote acompanha o número do arquivo remessa que `GerarHeaderRemessa` recebe, em header de lote, P, Q, R e trailer de lote, e em 184-191. Com 4 posições, depois de `9999` o lote volta para `0001`.
+- **Nosso número no boleto.** O guia pede que o boleto seja espelho da remessa, com 9 caracteres. `BancoSafraCarteira1/2.FormataNossoNumero` passa a gerar `000011428` em vez de `00001142-8`. A leitura do retorno (240 e 400) usa o mesmo formato, porque a plataforma confirma o registro procurando o boleto pelo nosso número formatado.
+
+Continua pendente, à espera da mesa do Safra: a quantidade de registros do trailer de lote (detalhes + 2, adotada aqui, ou só os detalhes, como diz o texto do guia).
 
 ## Testes
 
@@ -103,7 +112,9 @@ A descrição da ocorrência vem de `Cnab.OcorrenciaCnab240`.
 | `Remessa_JurosPorPercentual_ViramValorPorDia` | conversão do percentual em valor por dia |
 | `Remessa_Baixa_UsaMovimento02` | movimento `02` em P e Q |
 | `Remessa_CNAB400_ContinuaComHeaderDe400Posicoes` | controle: o CNAB400 continua sendo gerado |
-| `Retorno_LeHeaderESegmentosTEU_DeLiquidacaoEDeRejeicao` | header, liquidação `06` (valores pagos e datas) e rejeição `03` com o motivo de 214-223 |
+| `Retorno_LeHeaderESegmentosTEU_DeLiquidacaoEDeRejeicao` | header, liquidação `06` (valores pagos e datas) e rejeição `03` com o motivo de 214-223; nosso número formatado sem hífen |
+| `Remessa_Lote_AcompanhaONumeroDoArquivoEmTodosOsRegistrosDoLote` | lote = número do arquivo (1, 2, 9999 e 10000 → `0001`) em todos os registros do lote e em 184-191 (AD-5) |
+| `Boleto_NossoNumeroFormatado_EspelhaAsPosicoes038a046DaRemessa` | nosso número do boleto igual às posições 038-046 da remessa (AD-5) |
 
 O projeto `Boleto2.Net.Testes` não compila sozinho (ver AD-3 de ADR-N3-7193). Por isso, os testes foram executados num harness local temporário em .NET 10. Esse harness compila o código-fonte desta biblioteca e o arquivo de teste acima, com um shim mínimo de NUnit sobre MSTest. Nada dele foi versionado. Resultados:
 

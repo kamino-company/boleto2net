@@ -36,15 +36,15 @@ namespace Boleto2Net.Testes
         }
 
 
-        [TestCase(141.50, "453", "BB943A", "1", "00000453-7", "42291690400000141507123450012345670000045372", "42297.12346 50012.345679 00000.453720 1 69040000014150", 2016, 9, 1)]
-        [TestCase(2711.12, "456", "BB874A", "2", "00000456-1", "42292693400002711127123450012345670000045612", "42297.12346 50012.345679 00000.456129 2 69340000271112", 2016, 10, 1)]
-        [TestCase(645.39, "414", "BB815A", "3", "00000414-6", "42293687300000645397123450012345670000041462", "42297.12346 50012.345679 00000.414623 3 68730000064539", 2016, 8, 1)]
-        [TestCase(292.21, "444", "BB834A", "4", "00000444-8", "42294690500000292217123450012345670000044482", "42297.12346 50012.345679 00000.444828 4 69050000029221", 2016, 9, 2)]
-        [TestCase(838, "562", "BB933A", "5", "00000562-2", "42295702600000838007123450012345670000056222", "42297.12346 50012.345679 00000.562223 5 70260000083800", 2017, 1, 1)]
-        [TestCase(2927.11, "445", "BB874A", "6", "00000445-6", "42296690500002927117123450012345670000044562", "42297.12346 50012.345679 00000.445627 6 69050000292711", 2016, 9, 2)]
-        [TestCase(2921.27, "443", "BB833A", "7", "00000443-0", "42297690500002921277123450012345670000044302", "42297.12346 50012.345679 00000.443028 7 69050000292127", 2016, 9, 2)]
-        [TestCase(293.21, "468", "BB856A", "8", "00000468-5", "42298693500000293217123450012345670000046852", "42297.12346 50012.345679 00000.468520 8 69350000029321", 2016, 10, 2)]
-        [TestCase(276, "561", "BB932A", "9", "00000561-4", "42299702600000276007123450012345670000056142", "42297.12346 50012.345679 00000.561423 9 70260000027600", 2017, 1, 1)]
+        [TestCase(141.50, "453", "BB943A", "1", "000004537", "42291690400000141507123450012345670000045372", "42297.12346 50012.345679 00000.453720 1 69040000014150", 2016, 9, 1)]
+        [TestCase(2711.12, "456", "BB874A", "2", "000004561", "42292693400002711127123450012345670000045612", "42297.12346 50012.345679 00000.456129 2 69340000271112", 2016, 10, 1)]
+        [TestCase(645.39, "414", "BB815A", "3", "000004146", "42293687300000645397123450012345670000041462", "42297.12346 50012.345679 00000.414623 3 68730000064539", 2016, 8, 1)]
+        [TestCase(292.21, "444", "BB834A", "4", "000004448", "42294690500000292217123450012345670000044482", "42297.12346 50012.345679 00000.444828 4 69050000029221", 2016, 9, 2)]
+        [TestCase(838, "562", "BB933A", "5", "000005622", "42295702600000838007123450012345670000056222", "42297.12346 50012.345679 00000.562223 5 70260000083800", 2017, 1, 1)]
+        [TestCase(2927.11, "445", "BB874A", "6", "000004456", "42296690500002927117123450012345670000044562", "42297.12346 50012.345679 00000.445627 6 69050000292711", 2016, 9, 2)]
+        [TestCase(2921.27, "443", "BB833A", "7", "000004430", "42297690500002921277123450012345670000044302", "42297.12346 50012.345679 00000.443028 7 69050000292127", 2016, 9, 2)]
+        [TestCase(293.21, "468", "BB856A", "8", "000004685", "42298693500000293217123450012345670000046852", "42297.12346 50012.345679 00000.468520 8 69350000029321", 2016, 10, 2)]
+        [TestCase(276, "561", "BB932A", "9", "000005614", "42299702600000276007123450012345670000056142", "42297.12346 50012.345679 00000.561423 9 70260000027600", 2017, 1, 1)]
 
         public void Safra_1_BoletoOK(decimal valorTitulo, string nossoNumero, string numeroDocumento, string digitoVerificador, string nossoNumeroFormatado, string codigoDeBarras, string linhaDigitavel, params int[] anoMesDia)
         {
@@ -162,7 +162,9 @@ namespace Boleto2Net.Testes
             }
         };
 
-        private static string[] GerarRemessa(IBanco banco, params Boleto[] boletos)
+        private static string[] GerarRemessa(IBanco banco, params Boleto[] boletos) => GerarRemessa(banco, 7, boletos);
+
+        private static string[] GerarRemessa(IBanco banco, int numeroArquivoRemessa, params Boleto[] boletos)
         {
             var colecao = new Boletos { Banco = banco };
             foreach (var boleto in boletos)
@@ -170,7 +172,7 @@ namespace Boleto2Net.Testes
 
             using (var stream = new MemoryStream())
             {
-                new ArquivoRemessa(banco, TipoArquivo.CNAB240, 7).GerarArquivoRemessa(colecao, stream);
+                new ArquivoRemessa(banco, TipoArquivo.CNAB240, numeroArquivoRemessa).GerarArquivoRemessa(colecao, stream);
                 return Encoding.GetEncoding("ISO-8859-1").GetString(stream.ToArray())
                     .Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(l => l.TrimEnd('\r'))
@@ -225,7 +227,7 @@ namespace Boleto2Net.Testes
             var linhas = GerarRemessa(banco, BoletoComEncargos(banco));
             var lote = linhas[1];
 
-            Assert.That(Campo(lote, 4, 4), Is.EqualTo("0001"));
+            Assert.That(Campo(lote, 4, 4), Is.EqualTo("0007"));                   // lote = número do arquivo (7)
             Assert.That(Campo(lote, 9, 1), Is.EqualTo("R"));
             Assert.That(Campo(lote, 10, 2), Is.EqualTo("01"));
             Assert.That(Campo(lote, 14, 3), Is.EqualTo("060"));
@@ -235,7 +237,7 @@ namespace Boleto2Net.Testes
             Assert.That(Campo(lote, 54, 19), Is.EqualTo(Campo(linhas[0], 53, 19)));  // 054-072 = 053-071 do header
             Assert.That(Campo(lote, 74, 30).TrimEnd(), Is.EqualTo("CEDENTE TESTE LTDA"));
             Assert.That(Campo(lote, 104, 80), Is.EqualTo(new string(' ', 80)));
-            Assert.That(Campo(lote, 184, 8), Is.EqualTo("00000001"));
+            Assert.That(Campo(lote, 184, 8), Is.EqualTo("00000007"));             // repete o lote de 004-007
             Assert.That(Campo(lote, 192, 8), Is.EqualTo(DateTime.Now.ToString("ddMMyyyy")));
             Assert.That(Campo(lote, 200, 8), Is.EqualTo("00000000"));
         }
@@ -314,7 +316,7 @@ namespace Boleto2Net.Testes
 
             // 2 headers + P,Q,R + P,Q + 2 trailers
             Assert.That(linhas.Length, Is.EqualTo(9));
-            Assert.That(Campo(trailerLote, 4, 5), Is.EqualTo("00015"));
+            Assert.That(Campo(trailerLote, 4, 5), Is.EqualTo("00075"));
             Assert.That(Campo(trailerLote, 18, 6), Is.EqualTo("000007"));        // 5 detalhes + header/trailer do lote
             Assert.That(Campo(trailerLote, 24, 6), Is.EqualTo("000002"));
             Assert.That(Campo(trailerLote, 30, 17), Is.EqualTo("00000000000034150"));
@@ -324,6 +326,38 @@ namespace Boleto2Net.Testes
             Assert.That(Campo(trailerArquivo, 18, 6), Is.EqualTo("000001"));
             Assert.That(Campo(trailerArquivo, 24, 6), Is.EqualTo("000009"));
             Assert.That(Campo(trailerArquivo, 30, 6), Is.EqualTo(new string(' ', 6)));
+        }
+
+        [TestCase(1, "0001")]
+        [TestCase(2, "0002")]
+        [TestCase(9999, "9999")]
+        [TestCase(10000, "0001")]
+        public void Remessa_Lote_AcompanhaONumeroDoArquivoEmTodosOsRegistrosDoLote(int numeroArquivoRemessa, string loteEsperado)
+        {
+            // Guia: lote a partir de 0001, somando 1 a cada novo arquivo; 184-191 do header do lote repete o lote.
+            var banco = BancoSafra();
+            var linhas = GerarRemessa(banco, numeroArquivoRemessa, BoletoComEncargos(banco), BoletoSemEncargos(banco));
+
+            Assert.That(Campo(linhas[0], 4, 4), Is.EqualTo("0000"));
+            Assert.That(Campo(linhas[0], 158, 6), Is.EqualTo(numeroArquivoRemessa.ToString("000000")));
+            for (var i = 1; i < linhas.Length - 1; i++)
+                Assert.That(Campo(linhas[i], 4, 4), Is.EqualTo(loteEsperado), $"Lote da linha {i + 1}");
+            Assert.That(Campo(linhas[1], 184, 8), Is.EqualTo(loteEsperado.PadLeft(8, '0')));
+            Assert.That(Campo(linhas[linhas.Length - 1], 4, 4), Is.EqualTo("9999"));
+            foreach (var linha in linhas)
+                Assert.That(linha.Length, Is.EqualTo(240));
+        }
+
+        [Test]
+        public void Boleto_NossoNumeroFormatado_EspelhaAsPosicoes038a046DaRemessa()
+        {
+            // Guia (estrutura do boleto): o nosso número impresso tem 9 caracteres, igual ao arquivo remessa.
+            var banco = BancoSafra();
+            var boleto = BoletoComEncargos(banco);
+            var p = GerarRemessa(banco, boleto)[2];
+
+            Assert.That(boleto.NossoNumeroFormatado, Is.EqualTo("000004537"));
+            Assert.That(boleto.NossoNumeroFormatado, Is.EqualTo(Campo(p, 38, 9)));
         }
 
         [Test]
@@ -455,6 +489,7 @@ namespace Boleto2Net.Testes
             Assert.That(liquidado.DescricaoOcorrencia, Is.EqualTo(Cnab.OcorrenciaCnab240("06")));
             Assert.That(liquidado.NossoNumero, Is.EqualTo("00000453"));
             Assert.That(liquidado.NossoNumeroDV, Is.EqualTo("7"));
+            Assert.That(liquidado.NossoNumeroFormatado, Is.EqualTo("000004537"));   // mesmo formato do boleto emitido
             Assert.That(liquidado.NumeroDocumento, Is.EqualTo("BB943A"));
             Assert.That(liquidado.NumeroControleParticipante, Is.EqualTo("CTRL-1"));
             Assert.That(liquidado.TipoCarteira, Is.EqualTo(TipoCarteira.CarteiraCobrancaSimples));

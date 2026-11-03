@@ -18,7 +18,11 @@ namespace Boleto2Net
         public string Digito { get; } = "7";
         public List<string> IdsRetornoCnab400RegistroDetalhe { get; } = new List<string> { "1" };
         public bool RemoveAcentosArquivoRemessa { get; } = true;
-        private int NumeroArquivoRemessaCNAB400 { get; set; } // Safra repete o número do arquivo remessa na linha de detalhe (CNAB 400)
+        private int NumeroArquivoRemessa { get; set; } // Safra repete o número do arquivo remessa na linha de detalhe (CNAB 400) e no lote (CNAB 240)
+
+        // Guia Safra CNAB 240: o lote (004-007) começa em 0001 e soma 1 a cada novo arquivo, por isso acompanha o
+        // número do arquivo remessa. São só 4 posições: depois de 9999 o lote volta para 0001.
+        private string LoteCNAB240 => ((Math.Max(NumeroArquivoRemessa, 1) - 1) % 9999 + 1).ToString("0000");
 
         public void FormataCedente()
         {
@@ -54,7 +58,7 @@ namespace Boleto2Net
         }
         public string GerarHeaderRemessa(TipoArquivo tipoArquivo, int numeroArquivoRemessa, ref int numeroRegistroGeral)
         {
-            this.NumeroArquivoRemessaCNAB400 = numeroArquivoRemessa;
+            this.NumeroArquivoRemessa = numeroArquivoRemessa;
             try
             {
                 var header = Empty;
@@ -204,7 +208,7 @@ namespace Boleto2Net
                 //038-046 Nosso número Safra: 8 dígitos + DV (047-057 em branco)
                 boleto.NossoNumero = registro.Substring(37, 8);
                 boleto.NossoNumeroDV = registro.Substring(45, 1);
-                boleto.NossoNumeroFormatado = $"{boleto.NossoNumero}-{boleto.NossoNumeroDV}";
+                boleto.NossoNumeroFormatado = $"{boleto.NossoNumero}{boleto.NossoNumeroDV}";
 
                 //058 Carteira: 1 = Cobrança Simples / 2 = Cobrança Vinculada
                 boleto.Carteira = registro.Substring(57, 1);
@@ -311,7 +315,7 @@ namespace Boleto2Net
                 //Identificação do Título no Banco
                 boleto.NossoNumero = registro.Substring(62, 8);
                 boleto.NossoNumeroDV = registro.Substring(70, 1); //DV
-                boleto.NossoNumeroFormatado = $"{boleto.NossoNumero}-{boleto.NossoNumeroDV}";
+                boleto.NossoNumeroFormatado = $"{boleto.NossoNumero}{boleto.NossoNumeroDV}";
 
                 //Identificação de Ocorrência
                 boleto.CodigoOcorrencia = registro.Substring(108, 2);
@@ -410,7 +414,7 @@ namespace Boleto2Net
             {
                 var reg = new TRegistroEDI();
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 003, 0, "422", '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, "0001", '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, LoteCNAB240, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0008, 001, 0, "1", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0009, 001, 0, "R", ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0010, 002, 0, "01", '0');
@@ -429,7 +433,7 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0104, 040, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0144, 040, 0, Empty, ' ');
                 // O guia manda repetir aqui o sequencial do lote (004-007).
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0184, 008, 0, "1", '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0184, 008, 0, LoteCNAB240, '0');
                 reg.Adicionar(TTiposDadoEDI.ediDataDDMMAAAA_________, 0192, 008, 0, DateTime.Now, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0200, 008, 0, "0", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0208, 033, 0, Empty, ' ');
@@ -449,7 +453,7 @@ namespace Boleto2Net
                 numeroRegistroGeral++;
                 var reg = new TRegistroEDI();
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 003, 0, "422", '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, "0001", '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, LoteCNAB240, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0008, 001, 0, "3", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0009, 005, 0, numeroRegistroGeral, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0014, 001, 0, "P", ' ');
@@ -568,7 +572,7 @@ namespace Boleto2Net
                 var cep = (boleto.Sacado.Endereco.CEP ?? Empty).Replace("-", "").Replace(".", "").PadLeft(8, '0');
                 var reg = new TRegistroEDI();
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 003, 0, "422", '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, "0001", '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, LoteCNAB240, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0008, 001, 0, "3", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0009, 005, 0, numeroRegistroGeral, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0014, 001, 0, "Q", ' ');
@@ -610,7 +614,7 @@ namespace Boleto2Net
                 numeroRegistroGeral++;
                 var reg = new TRegistroEDI();
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 003, 0, "422", '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, "0001", '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, LoteCNAB240, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0008, 001, 0, "3", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0009, 005, 0, numeroRegistroGeral, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0014, 001, 0, "R", ' ');
@@ -641,7 +645,7 @@ namespace Boleto2Net
                 var numeroRegistrosNoLote = numeroRegistroGeral + 2;
                 var reg = new TRegistroEDI();
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 003, 0, "422", '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, "0001", '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, LoteCNAB240, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0008, 001, 0, "5", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0009, 009, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0018, 006, 0, numeroRegistrosNoLote, '0');
@@ -762,7 +766,7 @@ namespace Boleto2Net
         {
             try
             {
-                var numeroArquivoRemessa3Digitos = this.NumeroArquivoRemessaCNAB400.ToString().PadLeft(3, '0');
+                var numeroArquivoRemessa3Digitos = this.NumeroArquivoRemessa.ToString().PadLeft(3, '0');
                 numeroArquivoRemessa3Digitos = numeroArquivoRemessa3Digitos.Substring(numeroArquivoRemessa3Digitos.Length - 3);
                 numeroRegistroGeral++;
                 var reg = new TRegistroEDI();
@@ -859,7 +863,7 @@ namespace Boleto2Net
         {
             try
             {
-                var numeroArquivoRemessa3Digitos = this.NumeroArquivoRemessaCNAB400.ToString().PadLeft(3, '0');
+                var numeroArquivoRemessa3Digitos = this.NumeroArquivoRemessa.ToString().PadLeft(3, '0');
                 numeroArquivoRemessa3Digitos = numeroArquivoRemessa3Digitos.Substring(numeroArquivoRemessa3Digitos.Length-3);
                 numeroRegistroGeral++;
                 var reg = new TRegistroEDI();
