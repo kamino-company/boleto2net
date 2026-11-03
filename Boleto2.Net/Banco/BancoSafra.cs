@@ -18,7 +18,12 @@ namespace Boleto2Net
         public string Digito { get; } = "7";
         public List<string> IdsRetornoCnab400RegistroDetalhe { get; } = new List<string> { "1" };
         public bool RemoveAcentosArquivoRemessa { get; } = true;
-        private int NumeroArquivoRemessa { get; set; } // Safra repete o número do arquivo remessa na linha de detalhe (CNAB 400) e no lote (CNAB 240)
+        // Safra repete o número do arquivo remessa na linha de detalhe (CNAB 400) e no lote (CNAB 240).
+        // BancoSafra é singleton: o número fica por thread para que remessas geradas em paralelo não troquem o
+        // lote uma da outra. Header, detalhes e trailer de um arquivo saem na mesma thread (ArquivoRemessa é síncrono).
+        [ThreadStatic]
+        private static int _numeroArquivoRemessa;
+        private int NumeroArquivoRemessa { get => _numeroArquivoRemessa; set => _numeroArquivoRemessa = value; }
 
         // Guia Safra CNAB 240: o lote (004-007) começa em 0001 e soma 1 a cada novo arquivo, por isso acompanha o
         // número do arquivo remessa. São só 4 posições: depois de 9999 o lote volta para 0001.

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using NUnit.Framework;
 
 namespace Boleto2Net.Testes
@@ -346,6 +347,29 @@ namespace Boleto2Net.Testes
             Assert.That(Campo(linhas[linhas.Length - 1], 4, 4), Is.EqualTo("9999"));
             foreach (var linha in linhas)
                 Assert.That(linha.Length, Is.EqualTo(240));
+        }
+
+        [Test]
+        public void Remessa_Lote_NaoEhTrocadoPorOutraRemessaGeradaEmOutraThread()
+        {
+            // BancoSafra é singleton. Um header gerado em outra thread no meio da remessa não pode mudar o lote
+            // dos detalhes desta.
+            var banco = BancoSafra();
+            var registro = 0;
+            banco.GerarHeaderRemessa(TipoArquivo.CNAB240, 7, ref registro);
+
+            var outraThread = new Thread(() =>
+            {
+                var registroOutra = 0;
+                banco.GerarHeaderRemessa(TipoArquivo.CNAB240, 8, ref registroOutra);
+            });
+            outraThread.Start();
+            outraThread.Join();
+
+            registro = 0;
+            var detalhe = banco.GerarDetalheRemessa(TipoArquivo.CNAB240, BoletoSemEncargos(banco), ref registro);
+
+            Assert.That(Campo(detalhe.Split('\n')[0].TrimEnd('\r'), 4, 4), Is.EqualTo("0007"));
         }
 
         [Test]
