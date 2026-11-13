@@ -52,5 +52,17 @@ namespace Boleto2Net.Exceptions
         public static Exception CarteiraNaoImplementada(string carteiraComVariacao)
             => new Boleto2NetException($"Carteira não implementada: {carteiraComVariacao}");
 
+        public static Exception DigitoContaObrigatorio(string conta)
+            => new Boleto2NetException($"A conta ({conta}) deve ser informada com o dígito verificador de 1 dígito (ex.: 580195-7).");
+
+        public static Exception EspecieDocumentoNaoAceita(string especieDocumento, string especiesAceitas)
+            => new Boleto2NetException($"Espécie de documento {especieDocumento} não aceita pelo banco. Espécies aceitas: {especiesAceitas}.");
+
+        public static Exception CepPagadorInvalido(string nossoNumero)
+            => new Boleto2NetException($"CEP do pagador vazio, zerado ou inválido no título {nossoNumero}: informe o CEP com 8 dígitos.");
+
+        public static Exception InstrucaoDeProtestoInvalida(string motivo)
+            => new Boleto2NetException(motivo);
+
     }
 }

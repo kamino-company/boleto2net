@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Web.UI;
 using Boleto2Net.Exceptions;
 using static System.String;
@@ -18,16 +19,15 @@ namespace Boleto2Net
         public string Digito { get; } = "7";
         public List<string> IdsRetornoCnab400RegistroDetalhe { get; } = new List<string> { "1" };
         public bool RemoveAcentosArquivoRemessa { get; } = true;
-        // Safra repete o número do arquivo remessa na linha de detalhe (CNAB 400) e no lote (CNAB 240).
-        // BancoSafra é singleton: o número fica por thread para que remessas geradas em paralelo não troquem o
-        // lote uma da outra. Header, detalhes e trailer de um arquivo saem na mesma thread (ArquivoRemessa é síncrono).
+        // Safra repete o número do arquivo remessa na linha de detalhe (CNAB 400) e no header de lote (CNAB 240,
+        // 184-191). BancoSafra é singleton: o número fica por thread para que remessas geradas em paralelo não troquem
+        // o número uma da outra. Header, detalhes e trailer de um arquivo saem na mesma thread (ArquivoRemessa é síncrono).
         [ThreadStatic]
         private static int _numeroArquivoRemessa;
         private int NumeroArquivoRemessa { get => _numeroArquivoRemessa; set => _numeroArquivoRemessa = value; }
 
-        // Guia Safra CNAB 240: o lote (004-007) começa em 0001 e soma 1 a cada novo arquivo, por isso acompanha o
-        // número do arquivo remessa. São só 4 posições: depois de 9999 o lote volta para 0001.
-        private string LoteCNAB240 => ((Math.Max(NumeroArquivoRemessa, 1) - 1) % 9999 + 1).ToString("0000");
+        // Manual Safra 240, nota G002: 0001 no primeiro lote do arquivo. A remessa tem um lote só.
+        private const string LoteCNAB240 = "0001";
 
         public void FormataCedente()
         {
@@ -36,10 +36,36 @@ namespace Boleto2Net
             if (!CarteiraFactory<BancoSafra>.CarteiraEstaImplementada(contaBancaria.CarteiraComVariacaoPadrao))
                 throw Boleto2NetException.CarteiraNaoImplementada(contaBancaria.CarteiraComVariacaoPadrao);
 
-            contaBancaria.FormatarDados("Pagável em qualquer Banco do Sistema de Compensação","", "", 6);
+            // Manual Safra 240 (p.8): agência com 5 posições, sem o dígito; o DV da agência não entra em nenhum campo.
+            var agencia = (contaBancaria.Agencia ?? Empty).Trim();
+            if (agencia.Length == 0 || !SoDigitosAscii(agencia))
+                throw Boleto2NetException.AgenciaInvalida(agencia, 5);
+            contaBancaria.Agencia = agencia;
 
-            Cedente.CodigoFormatado = $"{contaBancaria.Agencia}-{contaBancaria.DigitoAgencia} / {contaBancaria.Conta}-{contaBancaria.DigitoConta}";
+            // Conta com 9 posições "com dígito" (p.8) no campo livre: o DV da conta é obrigatório e tem 1 dígito.
+            var digitoConta = contaBancaria.DigitoConta ?? Empty;
+            if (digitoConta.Length != 1 || !SoDigitosAscii(digitoConta))
+                throw Boleto2NetException.DigitoContaObrigatorio(contaBancaria.Conta);
+
+            // A carteira do cedente decide a P 058 e os totais por carteira do trailer de lote; o código de barras e a
+            // carteira do boleto já seguem CarteiraPadrao, então o tipo acompanha: 2 = vinculada, 1 = simples.
+            contaBancaria.TipoCarteiraPadrao = contaBancaria.CarteiraPadrao == "2"
+                ? TipoCarteira.CarteiraCobrancaVinculada
+                : TipoCarteira.CarteiraCobrancaSimples;
+
+            // Conta de até 8 dígitos + DV (p.8 e p.51: 9 posições no código de barras; 12 + DV no CNAB 240).
+            contaBancaria.FormatarDados("Pagável em qualquer Banco do Sistema de Compensação", "", "", 8, 5);
+
+            // Agência / código do beneficiário (conta com 9 posições, com DV), como no boleto modelo do manual.
+            Cedente.CodigoFormatado = $"{contaBancaria.Agencia} / {ContaCodigoBeneficiario(contaBancaria)}";
         }
+
+        // Conta com 9 posições, com dígito (código de barras posições 26-34 e "código do beneficiário").
+        internal static string ContaCodigoBeneficiario(ContaBancaria contaBancaria)
+            => $"{contaBancaria.Conta}{contaBancaria.DigitoConta}".PadLeft(9, '0');
+
+        // char.IsDigit aceita dígitos Unicode (ex.: fullwidth); campos CNAB são numéricos ASCII.
+        private static bool SoDigitosAscii(string valor) => valor.All(c => c >= '0' && c <= '9');
 
         public void ValidaBoleto(Boleto boleto)
         {
@@ -182,10 +208,10 @@ namespace Boleto2Net
                 arquivoRetorno.Banco.Cedente.Nome = registro.Substring(72, 30).Trim();
 
                 arquivoRetorno.Banco.Cedente.ContaBancaria = new ContaBancaria();
-                //053-057 Agência (no Safra, 4 posições da agência + DV, como a remessa grava) / 058 em branco
+                //053-057 Agência (5 posições, sem DV) / 058 DV da agência (em branco no Safra)
                 //059-070 Conta / 071 DV da conta
-                arquivoRetorno.Banco.Cedente.ContaBancaria.Agencia = registro.Substring(52, 4);
-                arquivoRetorno.Banco.Cedente.ContaBancaria.DigitoAgencia = registro.Substring(56, 1);
+                arquivoRetorno.Banco.Cedente.ContaBancaria.Agencia = registro.Substring(52, 5);
+                arquivoRetorno.Banco.Cedente.ContaBancaria.DigitoAgencia = registro.Substring(57, 1).Trim();
                 arquivoRetorno.Banco.Cedente.ContaBancaria.Conta = registro.Substring(58, 12);
                 arquivoRetorno.Banco.Cedente.ContaBancaria.DigitoConta = registro.Substring(70, 1);
 
@@ -206,8 +232,8 @@ namespace Boleto2Net
             {
                 //016-017 Código de movimento retorno
                 boleto.CodigoOcorrencia = registro.Substring(15, 2);
-                boleto.DescricaoOcorrencia = Cnab.OcorrenciaCnab240(boleto.CodigoOcorrencia);
-                //214-223 Motivo da ocorrência (rejeições)
+                boleto.DescricaoOcorrencia = DescricaoOcorrenciaCnab240(boleto.CodigoOcorrencia);
+                //214-223 Motivos da ocorrência: até 5 códigos de 2 posições (tabela C047 do manual)
                 boleto.CodigoOcorrenciaAuxiliar = registro.Substring(213, 10);
 
                 //038-046 Nosso número Safra: 8 dígitos + DV (047-057 em branco)
@@ -261,7 +287,7 @@ namespace Boleto2Net
         {
             try
             {
-                //018-032 Juros/multa/encargos / 033-047 Desconto / 048-062 Abatimento / 063-077 IOF
+                //018-032 Acréscimos (juros + multa + encargos, num valor só) / 033-047 Desconto / 048-062 Abatimento / 063-077 IOF
                 boleto.ValorJurosDia = Convert.ToDecimal(registro.Substring(17, 15)) / 100;
                 boleto.ValorDesconto = Convert.ToDecimal(registro.Substring(32, 15)) / 100;
                 boleto.ValorAbatimento = Convert.ToDecimal(registro.Substring(47, 15)) / 100;
@@ -283,6 +309,74 @@ namespace Boleto2Net
             catch (Exception ex)
             {
                 throw new Exception("Erro ao ler detalhe do arquivo de RETORNO / CNAB 240 / U.", ex);
+            }
+        }
+
+        // Código de movimento retorno (C044, manual p.33-34). A tabela do Safra diverge da genérica em vários
+        // códigos (ex.: 44 e 45), por isso não usa Cnab.OcorrenciaCnab240. Código fora do domínio Safra: vazio.
+        private static string DescricaoOcorrenciaCnab240(string codigo)
+        {
+            switch (codigo)
+            {
+                case "02": return "Entrada confirmada";
+                case "03": return "Entrada rejeitada";
+                case "04": return "Transferência de carteira/entrada";
+                case "05": return "Transferência de carteira/baixa";
+                case "06": return "Liquidação";
+                case "07": return "Confirmação do recebimento da instrução de desconto";
+                case "08": return "Confirmação do recebimento do cancelamento do desconto";
+                case "09": return "Baixa";
+                case "11": return "Títulos em carteira (em ser)";
+                case "12": return "Confirmação recebimento instrução de abatimento";
+                case "13": return "Confirmação recebimento instrução de cancelamento abatimento";
+                case "14": return "Confirmação recebimento instrução alteração de vencimento";
+                case "15": return "Franco de pagamento";
+                case "17": return "Liquidação após baixa ou liquidação título não registrado";
+                case "19": return "Confirmação recebimento instrução de protesto";
+                case "20": return "Confirmação recebimento instrução de sustação/cancelamento de protesto";
+                case "23": return "Remessa a cartório (aponte)";
+                case "24": return "Retirada de cartório e manutenção em carteira";
+                case "25": return "Protestado e baixado";
+                case "26": return "Instrução rejeitada";
+                case "27": return "Confirmação do pedido de alteração de outros dados";
+                case "28": return "Débito de tarifas/custas";
+                case "29": return "Ocorrências do pagador";
+                case "30": return "Alteração de dados rejeitada";
+                case "33": return "Confirmação da alteração dos dados do rateio de crédito";
+                case "34": return "Confirmação do cancelamento dos dados do rateio de crédito";
+                case "35": return "Confirmação do desagendamento do débito automático";
+                case "36": return "Confirmação de envio de e-mail/SMS";
+                case "37": return "Envio de e-mail/SMS rejeitado";
+                case "38": return "Confirmação de alteração do prazo limite de recebimento";
+                case "39": return "Confirmação de dispensa de prazo limite de recebimento";
+                case "40": return "Confirmação da alteração do número do título dado pelo beneficiário";
+                case "41": return "Confirmação da alteração do número controle do participante";
+                case "42": return "Confirmação da alteração dos dados do pagador";
+                case "43": return "Confirmação da alteração dos dados do sacador/avalista";
+                case "44": return "Título pago com cheque devolvido";
+                case "45": return "Título pago com cheque compensado";
+                case "46": return "Instrução para cancelar protesto confirmada";
+                case "47": return "Instrução para protesto para fins falimentares confirmada";
+                case "48": return "Confirmação de instrução de transferência de carteira/modalidade";
+                case "49": return "Alteração de contrato de cobrança";
+                case "50": return "Título pago com cheque pendente de liquidação";
+                case "51": return "Título DDA reconhecido pelo pagador";
+                case "52": return "Título DDA não reconhecido pelo pagador";
+                case "53": return "Título DDA recusado pela CIP";
+                case "54": return "Confirmação da instrução de baixa de título negativado sem protesto";
+                case "55": return "Confirmação de pedido de dispensa de multa";
+                case "56": return "Confirmação do pedido de cobrança de multa";
+                case "57": return "Confirmação do pedido de alteração de cobrança de juros";
+                case "58": return "Confirmação do pedido de alteração do valor/data de desconto";
+                case "59": return "Confirmação do pedido de alteração do beneficiário do título";
+                case "60": return "Confirmação do pedido de dispensa de juros de mora";
+                case "61": return "Confirmação de alteração do valor nominal";
+                case "63": return "Título sustado judicialmente";
+                case "64": return "Confirmação de alteração do valor mínimo/percentual";
+                case "65": return "Confirmação de alteração do valor máximo/percentual";
+                case "93": return "Intenção de pagamento";
+                case "94": return "Cancelamento de intenção de pagamento";
+                default: return Empty;
             }
         }
         #endregion
@@ -370,10 +464,10 @@ namespace Boleto2Net
         }
 
         #region Remessa - CNAB240
-        // Layout padrão Safra CNAB 240 ("Guia para implantação de transmissão e troca de arquivos", Mesa de Implantação
-        // Cash Management). O Safra não trata convênio, e a agência mantenedora é informada com 5 dígitos (agência + DV),
-        // a mesma composição do campo livre do código de barras; a posição do DV da agência fica em branco.
-        private string AgenciaCNAB240 => $"{Cedente.ContaBancaria.Agencia}{Cedente.ContaBancaria.DigitoAgencia}";
+        // "Manual de Transferência de Arquivos - Cobrança - Layout Padrão Safra 240". O Safra não trata convênio; a
+        // agência mantenedora tem 5 posições sem dígito (p.8), a mesma do campo livre do código de barras, e a posição
+        // do DV da agência fica em branco.
+        private string AgenciaCNAB240 => Cedente.ContaBancaria.Agencia;
 
         private string GerarHeaderRemessaCNAB240(int numeroArquivoRemessa)
         {
@@ -399,7 +493,7 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediDataDDMMAAAA_________, 0144, 008, 0, DateTime.Now, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0152, 006, 0, "0", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0158, 006, 0, numeroArquivoRemessa, '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0164, 003, 0, "087", '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0164, 003, 0, "103", '0'); // Versão do layout (p.9)
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0167, 005, 0, "0", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0172, 020, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0192, 020, 0, Empty, ' ');
@@ -437,8 +531,8 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0074, 030, 0, Cedente.Nome, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0104, 040, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0144, 040, 0, Empty, ' ');
-                // O guia manda repetir aqui o sequencial do lote (004-007).
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0184, 008, 0, LoteCNAB240, '0');
+                // Número remessa (G079): sequência de envio do arquivo, o mesmo NSA do header de arquivo (158-163).
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0184, 008, 0, NumeroArquivoRemessa, '0');
                 reg.Adicionar(TTiposDadoEDI.ediDataDDMMAAAA_________, 0192, 008, 0, DateTime.Now, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0200, 008, 0, "0", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0208, 033, 0, Empty, ' ');
@@ -492,7 +586,8 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0073, 005, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediDataDDMMAAAA_________, 0078, 008, 0, boleto.DataVencimento, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0086, 015, 2, boleto.ValorTitulo, '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0101, 005, 0, AgenciaCNAB240, '0');
+                // Agência cobradora (C014): opcional, atribuída pelo banco a partir do CEP do pagador.
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0101, 005, 0, "0", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0106, 001, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0107, 002, 0, EspecieCNAB240(boleto.EspecieDocumento), '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0109, 001, 0, "N", ' ');
@@ -530,21 +625,9 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0181, 015, 0, "0", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0196, 025, 0, boleto.NumeroControleParticipante, ' ');
 
-                switch (boleto.CodigoProtesto)
-                {
-                    case TipoCodigoProtesto.ProtestarDiasCorridos:
-                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0221, 001, 0, "1", '0');
-                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0222, 002, 0, boleto.DiasProtesto, '0');
-                        break;
-                    case TipoCodigoProtesto.ProtestarDiasUteis:
-                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0221, 001, 0, "2", '0');
-                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0222, 002, 0, boleto.DiasProtesto, '0');
-                        break;
-                    default:
-                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0221, 001, 0, "3", '0'); // Não protestar
-                        reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0222, 002, 0, "0", '0');
-                        break;
-                }
+                var codigoProtesto = CodigoProtestoCNAB240(boleto);
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0221, 001, 0, codigoProtesto, '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0222, 002, 0, codigoProtesto == "3" ? 0 : boleto.DiasProtesto, '0');
 
                 if (boleto.CodigoBaixaDevolucao == TipoCodigoBaixaDevolucao.BaixarDevolver)
                 {
@@ -573,8 +656,8 @@ namespace Boleto2Net
         {
             try
             {
+                var cep = CepPagadorCNAB240(boleto);
                 numeroRegistroGeral++;
-                var cep = (boleto.Sacado.Endereco.CEP ?? Empty).Replace("-", "").Replace(".", "").PadLeft(8, '0');
                 var reg = new TRegistroEDI();
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 003, 0, "422", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 004, 0, LoteCNAB240, '0');
@@ -611,7 +694,10 @@ namespace Boleto2Net
         {
             try
             {
-                // O Safra só aceita multa em percentual (código 2); sem multa o segmento R não é gerado.
+                // O Safra só aceita multa em percentual (código 2); sem multa o segmento R não é gerado. No pedido de
+                // baixa (movimento 02) também não: descontos 2/3 e multa não se aplicam a título que está saindo.
+                if (boleto.CodigoOcorrencia == "02")
+                    return Empty;
                 var percentualMulta = PercentualMultaCNAB240(boleto);
                 if (percentualMulta <= 0)
                     return Empty;
@@ -658,9 +744,10 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0030, 017, 2, valorCobrancaSimples, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0047, 006, 0, numeroRegistroCobrancaVinculada, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0053, 017, 2, valorCobrancaVinculada, '0');
-                // Caucionada e descontada: o Safra não trata, informar zeros.
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0070, 029, 0, "0", '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0099, 142, 0, Empty, ' ');
+                // Caucionada e descontada (070-115, numéricos): o Safra não trata, informar zeros.
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0070, 046, 0, "0", '0');
+                // 116-123 aviso de lançamento (só no retorno) e 124-240 uso FEBRABAN.
+                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0116, 125, 0, Empty, ' ');
                 reg.CodificarLinha();
                 return reg.LinhaRegistro;
             }
@@ -683,7 +770,8 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0009, 009, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0018, 006, 0, "1", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0024, 006, 0, numeroRegistrosNoArquivo, '0');
-                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0030, 211, 0, Empty, ' ');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0030, 006, 0, "0", '0'); // Contas p/ conciliação (numérico)
+                reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0036, 205, 0, Empty, ' ');
                 reg.CodificarLinha();
                 return reg.LinhaRegistro;
             }
@@ -711,7 +799,8 @@ namespace Boleto2Net
             return 0;
         }
 
-        // Espécies aceitas pelo Safra no CNAB240; qualquer outra (inclusive não definida) vai como 99 - Outros.
+        // Espécie (C015, p.30): 02 DM, 04 DS, 12 NP, 16 NS, 17 RC, 31 CC e 33 BDA (sem correspondente no enum).
+        // O Safra não tem 23 (NF) nem 99 (outros): qualquer outra espécie seria rejeitada com motivo 21.
         private static string EspecieCNAB240(TipoEspecieDocumento especieDocumento)
         {
             switch (especieDocumento)
@@ -722,15 +811,94 @@ namespace Boleto2Net
                     return "04";
                 case TipoEspecieDocumento.NP:
                     return "12";
+                case TipoEspecieDocumento.NS:
+                    return "16";
                 case TipoEspecieDocumento.RC:
                     return "17";
-                case TipoEspecieDocumento.NF:
-                    return "23";
+                case TipoEspecieDocumento.CC:
+                    return "31";
                 default:
-                    return "99";
+                    throw Boleto2NetException.EspecieDocumentoNaoAceita(especieDocumento.ToString(), "DM, DS, NP, NS, RC e CC");
             }
         }
+
+        // Protesto (C026, p.31): 1 = dias corridos, só cobrança vinculada; 2 = dias úteis, só cobrança simples;
+        // 3 = não protestar. Pedido incompatível com a carteira é recusado aqui para não virar rejeição (motivo 37).
+        private static string CodigoProtestoCNAB240(Boleto boleto)
+        {
+            string codigo;
+            switch (boleto.CodigoProtesto)
+            {
+                case TipoCodigoProtesto.NaoProtestar:
+                    return "3";
+                case TipoCodigoProtesto.ProtestarDiasCorridos:
+                    if (boleto.TipoCarteira != TipoCarteira.CarteiraCobrancaVinculada)
+                        throw Boleto2NetException.InstrucaoDeProtestoInvalida(
+                            "O Safra só aceita protesto em dias corridos (código 1) na cobrança vinculada; na cobrança simples use protesto em dias úteis.");
+                    codigo = "1";
+                    break;
+                case TipoCodigoProtesto.ProtestarDiasUteis:
+                    if (boleto.TipoCarteira != TipoCarteira.CarteiraCobrancaSimples)
+                        throw Boleto2NetException.InstrucaoDeProtestoInvalida(
+                            "O Safra só aceita protesto em dias úteis (código 2) na cobrança simples; na cobrança vinculada use protesto em dias corridos.");
+                    codigo = "2";
+                    break;
+                default:
+                    throw Boleto2NetException.InstrucaoDeProtestoInvalida(
+                        $"Código de protesto {boleto.CodigoProtesto} não suportado pelo Safra no CNAB 240.");
+            }
+
+            // p.13: o prazo de baixa/devolução não pode ser menor que o prazo de protesto.
+            if (boleto.CodigoBaixaDevolucao == TipoCodigoBaixaDevolucao.BaixarDevolver && boleto.DiasBaixaDevolucao < boleto.DiasProtesto)
+                throw Boleto2NetException.InstrucaoDeProtestoInvalida(
+                    $"O prazo de baixa/devolução ({boleto.DiasBaixaDevolucao} dias) não pode ser menor que o prazo de protesto ({boleto.DiasProtesto} dias).");
+
+            return codigo;
+        }
+
+        // CEP do pagador (Q 129-136): o Safra não aceita CEP em branco ou zerado (p.8, motivo 48 - CEP inválido).
+        // CEP com menos de 8 dígitos é CEP que perdeu o zero à esquerda: completa com zeros. No pedido de baixa
+        // (movimento 02) o Q é opcional (p.5): o CEP só é formatado, nunca recusado.
+        private static string CepPagadorCNAB240(Boleto boleto)
+        {
+            var cep = (boleto.Sacado?.Endereco?.CEP ?? Empty).Replace("-", "").Replace(".", "").Trim();
+            var formatoValido = cep.Length >= 1 && cep.Length <= 8 && SoDigitosAscii(cep);
+
+            if (boleto.CodigoOcorrencia == "02")
+                return formatoValido ? cep.PadLeft(8, '0') : "00000000";
+
+            if (!formatoValido || cep.All(c => c == '0'))
+                throw Boleto2NetException.CepPagadorInvalido(boleto.NossoNumeroFormatado);
+            return cep.PadLeft(8, '0');
+        }
         #endregion
+
+        // O CNAB 400 tem 4 posições de agência (+ DV). A agência do cedente é guardada com 5 posições (CNAB 240):
+        // aqui volta a 4, e agência com 5 dígitos significativos não cabe no layout.
+        private string AgenciaCNAB400
+        {
+            get
+            {
+                var agencia = Cedente.ContaBancaria.Agencia;
+                var significativos = agencia.TrimStart('0');
+                if (significativos.Length > 4)
+                    throw Boleto2NetException.AgenciaInvalida(agencia, 4);
+                return significativos.PadLeft(4, '0');
+            }
+        }
+
+        // O CNAB 400 tem 6 posições de conta (+ DV). A conta do cedente é guardada com 8 posições (CNAB 240 e código
+        // de barras): aqui volta a 6, e conta com 7 ou 8 dígitos significativos não cabe no layout.
+        private string ContaCNAB400
+        {
+            get
+            {
+                var significativos = Cedente.ContaBancaria.Conta.TrimStart('0');
+                if (significativos.Length > 6)
+                    throw Boleto2NetException.ContaInvalida(significativos, 6);
+                return significativos.PadLeft(6, '0');
+            }
+        }
 
         private string GerarHeaderRemessaCNAB400(int numeroArquivoRemessa, ref int numeroRegistroGeral)
         {
@@ -745,10 +913,10 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0003, 007, 0, "REMESSA", ' ');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0010, 002, 0, "01", '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0012, 015, 0, "COBRANCA", ' ');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0027, 004, 0, Cedente.ContaBancaria.Agencia, '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0027, 004, 0, AgenciaCNAB400, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0031, 001, 0, Cedente.ContaBancaria.DigitoAgencia, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0032, 002, 0, "0", '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0034, 006, 0, Cedente.ContaBancaria.Conta, '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0034, 006, 0, ContaCNAB400, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0040, 001, 0, Cedente.ContaBancaria.DigitoConta, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0041, 006, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0047, 030, 0, Cedente.Nome, ' ');
@@ -778,10 +946,10 @@ namespace Boleto2Net
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0001, 001, 0, "1", '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0002, 002, 0, boleto.Banco.Cedente.TipoCPFCNPJ("00"), '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0004, 014, 0, boleto.Banco.Cedente.CPFCNPJ, '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0018, 004, 0, Cedente.ContaBancaria.Agencia, '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0018, 004, 0, AgenciaCNAB400, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0022, 001, 0, Cedente.ContaBancaria.DigitoAgencia, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0023, 002, 0, "0", '0');
-                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0025, 006, 0, Cedente.ContaBancaria.Conta, '0');
+                reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0025, 006, 0, ContaCNAB400, '0');
                 reg.Adicionar(TTiposDadoEDI.ediNumericoSemSeparador_, 0031, 001, 0, Cedente.ContaBancaria.DigitoConta, '0');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0032, 006, 0, Empty, ' ');
                 reg.Adicionar(TTiposDadoEDI.ediAlphaAliEsquerda_____, 0038, 025, 0, boleto.NumeroControleParticipante, ' ');

@@ -31,7 +31,9 @@ namespace Boleto2Net
 
         public string FormataCodigoBarraCampoLivre(Boleto boleto)
         {
-            return $"{boleto.Banco.Digito}{boleto.Banco.Cedente.ContaBancaria.Agencia}{boleto.Banco.Cedente.ContaBancaria.DigitoAgencia}00{boleto.Banco.Cedente.ContaBancaria.Conta}{boleto.Banco.Cedente.ContaBancaria.DigitoConta}{boleto.NossoNumero}{boleto.NossoNumeroDV}2";
+            // 7 + agência (5 posições, sem DV) + conta (9 posições, com DV) + nosso número (9) + 2 = cobrança registrada.
+            var contaBancaria = boleto.Banco.Cedente.ContaBancaria;
+            return $"{boleto.Banco.Digito}{contaBancaria.Agencia}{BancoSafra.ContaCodigoBeneficiario(contaBancaria)}{boleto.NossoNumero}{boleto.NossoNumeroDV}2";
         }
     }
 }
