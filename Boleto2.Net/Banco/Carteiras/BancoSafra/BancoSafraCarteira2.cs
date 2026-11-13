@@ -25,12 +25,15 @@ namespace Boleto2Net
 
             boleto.NossoNumero = boleto.NossoNumero.PadLeft(8, '0');
             boleto.NossoNumeroDV = boleto.NossoNumero.CalcularDVSafra();
-            boleto.NossoNumeroFormatado = $"{boleto.NossoNumero}-{boleto.NossoNumeroDV}";
+            // O guia Safra pede no boleto os mesmos 9 caracteres do arquivo remessa (038-046), sem hífen.
+            boleto.NossoNumeroFormatado = $"{boleto.NossoNumero}{boleto.NossoNumeroDV}";
         }
 
         public string FormataCodigoBarraCampoLivre(Boleto boleto)
         {
-            return $"{boleto.Banco.Digito}{boleto.Banco.Cedente.ContaBancaria.Agencia}{boleto.Banco.Cedente.ContaBancaria.DigitoAgencia}00{boleto.Banco.Cedente.ContaBancaria.Conta}{boleto.Banco.Cedente.ContaBancaria.DigitoConta}{boleto.NossoNumero}{boleto.NossoNumeroDV}2";
+            // 7 + agência (5 posições, sem DV) + conta (9 posições, com DV) + nosso número (9) + 2 = cobrança registrada.
+            var contaBancaria = boleto.Banco.Cedente.ContaBancaria;
+            return $"{boleto.Banco.Digito}{contaBancaria.Agencia}{BancoSafra.ContaCodigoBeneficiario(contaBancaria)}{boleto.NossoNumero}{boleto.NossoNumeroDV}2";
         }
     }
 }
