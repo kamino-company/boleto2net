@@ -27,18 +27,12 @@ namespace Boleto2Net
 
         public void FormatarDados(string localPagamento, string mensagemFixaTopoBoleto, string mensagemFixaSacado, int digitosConta)
         {
-            FormatarDados(localPagamento, mensagemFixaTopoBoleto, mensagemFixaSacado, digitosConta, 4);
-        }
-
-        // Para bancos cuja agência não tem 4 posições (ex.: Safra, 5 posições sem DV).
-        public void FormatarDados(string localPagamento, string mensagemFixaTopoBoleto, string mensagemFixaSacado, int digitosConta, int digitosAgencia)
-        {
             LocalPagamento = localPagamento;
             MensagemFixaTopoBoleto = mensagemFixaTopoBoleto;
             MensagemFixaSacado = mensagemFixaSacado;
 
             var agencia = Agencia;
-            Agencia = agencia.Length <= digitosAgencia ? agencia.PadLeft(digitosAgencia, '0') : throw Boleto2NetException.AgenciaInvalida(agencia, digitosAgencia);
+            Agencia = agencia.Length <= 4 ? agencia.PadLeft(4, '0') : throw Boleto2NetException.AgenciaInvalida(agencia, 4);
 
             var conta = Conta;
             Conta = conta.Length <= digitosConta ? conta.PadLeft(digitosConta, '0') : throw Boleto2NetException.ContaInvalida(conta, digitosConta);
