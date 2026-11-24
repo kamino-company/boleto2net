@@ -25,7 +25,8 @@ namespace Boleto2Net
 
             boleto.NossoNumero = boleto.NossoNumero.PadLeft(8, '0');
             boleto.NossoNumeroDV = boleto.NossoNumero.CalcularDVSafra();
-            boleto.NossoNumeroFormatado = $"{boleto.NossoNumero}-{boleto.NossoNumeroDV}";
+            // O guia Safra pede no boleto os mesmos 9 caracteres do arquivo remessa (038-046), sem hífen.
+            boleto.NossoNumeroFormatado = $"{boleto.NossoNumero}{boleto.NossoNumeroDV}";
         }
 
         public string FormataCodigoBarraCampoLivre(Boleto boleto)
